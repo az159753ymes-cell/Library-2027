@@ -1,0 +1,15 @@
+# 自動產生的完整備份
+backups/
+
+# 開發過程的暫存與解壓資料
+scratch/
+
+# Firebase Hosting 本機部署快取
+.firebase/
+
+# 封存檔不納入原始碼版本控制
+*.zip
+
+# 作業系統產生的檔案
+Thumbs.db
+.DS_Store

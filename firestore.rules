@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      // 教師選書不檢查Email網域；任何完成網站登入的帳號皆可使用。
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'az159753ymes@gmail.com';
+    }
+
+    function validClassSelection() {
+      return request.resource.data.classCode.matches('^[0-9]{3}$')
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.bookCodes.size() <= request.resource.data.limit
+        && ((request.resource.data.classCode.matches('^1[0-9]{2}$') && request.resource.data.limit == 2)
+          || (!request.resource.data.classCode.matches('^1[0-9]{2}$') && request.resource.data.limit == 3));
+    }
+
+    function isActiveTeacherSemester(semesterId) {
+      let settingsPath = /databases/$(database)/documents/teacherPortal/settings;
+      return exists(settingsPath) && get(settingsPath).data.activeSemester == semesterId;
+    }
+
+    // 選書交易開始時，系統必須先讀取指定文件是否存在。
+    // 新班級尚未選書時該文件沒有 resource.data，不能用 resource.data.semesterId 判斷；
+    // 改以文件名稱的學期前綴限制，僅可讀取目前教師選書學期的指定文件。
+    function isActiveTeacherSelectionDocument(selectionId) {
+      let settingsPath = /databases/$(database)/documents/teacherPortal/settings;
+      return exists(settingsPath)
+        && selectionId.matches('^' + get(settingsPath).data.activeSemester + '_.*$');
+    }
+
+    function teacherSelectionWindowOpen(semesterId) {
+      let portalPath = /databases/$(database)/documents/teacherPortal/$(semesterId);
+      return exists(portalPath)
+        && get(portalPath).data.selectionWindow.startAtMs is number
+        && get(portalPath).data.selectionWindow.endAtMs is number
+        && request.time.toMillis() >= get(portalPath).data.selectionWindow.startAtMs
+        && request.time.toMillis() < get(portalPath).data.selectionWindow.endAtMs;
+    }
+
+    // 教師一次選書會同時新增「選書、班級時段、班級書箱」三份資料。
+    // 每一份都個別驗證必要條件，避免跨文件 getAfter 驗證造成整筆交易被誤拒。
+    function validTeacherSelectionContext(semesterId, classCode) {
+      let teacherPortalPath = /databases/$(database)/documents/teacherPortal/$(semesterId);
+      // 班級代碼由教師端輸入；規則只接受7、8年級的三位數班級。
+      // 不再以 teacherPortal.classCodes 作為第二道寫入條件，避免清單格式
+      // 或同步延遲使已在畫面允許的711、712班級被錯誤拒絕。
+      return classCode.matches('^[78][0-9]{2}$')
+        && exists(teacherPortalPath)
+        && isActiveTeacherSemester(semesterId)
+        && teacherSelectionWindowOpen(semesterId);
+    }
+
+    function validSelectionCreate(selectionId) {
+      let teacherBookId = request.resource.data.semesterId + '_' + request.resource.data.bookCode;
+      let teacherBookPath = /databases/$(database)/documents/teacherBooks/$(teacherBookId);
+      return request.resource.data.teacherUid == request.auth.uid
+        && selectionId == request.resource.data.semesterId + '_' + request.resource.data.periodKey + '_' + request.resource.data.bookCode
+        && request.resource.data.periodKey.matches('^p[1-3]$')
+        && request.resource.data.bookCode is string
+        && validTeacherSelectionContext(request.resource.data.semesterId, request.resource.data.classCode)
+        && exists(teacherBookPath)
+        && get(teacherBookPath).data.available == true;
+    }
+
+    function validClassPeriodSelection(selectionId) {
+      return selectionId == request.resource.data.semesterId + '_' + request.resource.data.periodKey + '_' + request.resource.data.classCode
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.periodKey.matches('^p[1-3]$')
+        && request.resource.data.bookCode is string
+        && validTeacherSelectionContext(request.resource.data.semesterId, request.resource.data.classCode);
+    }
+
+    function validClassBookSelection(selectionId) {
+      return selectionId == request.resource.data.semesterId + '_' + request.resource.data.classCode + '_' + request.resource.data.bookCode
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.periodKey.matches('^p[1-3]$')
+        && request.resource.data.bookCode is string
+        && validTeacherSelectionContext(request.resource.data.semesterId, request.resource.data.classCode);
+    }
+
+    function ownsTeacherSelection() {
+      // 教師端以輸入班級作為操作範圍；同一班可由另一個已登入教師接手改選或取消。
+      return validTeacherSelectionContext(resource.data.semesterId, resource.data.classCode);
+    }
+
+    function ownsTeacherClassPeriodSelection() {
+      return validTeacherSelectionContext(resource.data.semesterId, resource.data.classCode);
+    }
+
+    function ownsTeacherClassBookSelection() {
+      return validTeacherSelectionContext(resource.data.semesterId, resource.data.classCode);
+    }
+
+    match /system/settings {
+      allow read, write: if isAdmin();
+    }
+
+    // 管理者完整資料與教師選書資料分離，教師無法讀取清冊、輪換與班級設定。
+    match /teacherPortal/{portalId} {
+      allow read: if signedIn() && (isAdmin() || portalId == 'settings' || isActiveTeacherSemester(portalId));
+      allow write: if isAdmin();
+    }
+
+    match /teacherBooks/{teacherBookId} {
+      allow read: if signedIn() && (isAdmin() || isActiveTeacherSemester(resource.data.semesterId));
+      allow write: if isAdmin();
+    }
+
+    match /semesters/{semesterId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /selections/{selectionId} {
+      allow get: if signedIn() && (isAdmin() || isActiveTeacherSelectionDocument(selectionId));
+      allow list: if signedIn() && (isAdmin() || isActiveTeacherSemester(resource.data.semesterId));
+      allow create: if signedIn() && validSelectionCreate(selectionId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && ownsTeacherSelection());
+    }
+
+    match /classPeriodSelections/{selectionId} {
+      allow get: if signedIn() && (isAdmin() || isActiveTeacherSelectionDocument(selectionId));
+      allow list: if signedIn() && (isAdmin() || isActiveTeacherSemester(resource.data.semesterId));
+      allow create: if signedIn() && validClassPeriodSelection(selectionId);
+      allow update: if isAdmin() || (signedIn()
+        && ownsTeacherClassPeriodSelection()
+        && resource.data.semesterId == request.resource.data.semesterId
+        && resource.data.classCode == request.resource.data.classCode
+        && resource.data.periodKey == request.resource.data.periodKey
+        && validClassPeriodSelection(selectionId));
+      allow delete: if isAdmin() || (signedIn() && ownsTeacherClassPeriodSelection());
+    }
+
+    match /classBookSelections/{selectionId} {
+      allow get: if signedIn() && (isAdmin() || isActiveTeacherSelectionDocument(selectionId));
+      allow list: if signedIn() && (isAdmin() || isActiveTeacherSemester(resource.data.semesterId));
+      allow create: if signedIn() && validClassBookSelection(selectionId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (signedIn() && ownsTeacherClassBookSelection());
+    }
+
+    match /classSelections/{classSelectionId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && validClassSelection();
+      allow update: if isAdmin() || (signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && validClassSelection()
+        && request.resource.data.bookCodes.hasAll(resource.data.bookCodes));
+      allow delete: if isAdmin();
+    }
+  }
+}
