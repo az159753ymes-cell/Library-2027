@@ -14,7 +14,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-  <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/login-error-help-illustration-v10.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/mobile-login-reminder-handlettered-v8.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/auth-error-reminder-handlettered-v5.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
@@ -1031,52 +1030,27 @@
         text-align: center;
       }
 
-      /* 輪換設定在手機上採緊湊一頁式版面，避免捲動與欄位裁切。 */
+      /* 輪換設定在手機上避免原生日期欄位與雙欄版面向右溢出。 */
       #combined-settings-modal {
-        align-items: center;
-        overflow: hidden;
-        padding: 8px;
+        align-items: flex-start;
+        overflow-y: auto;
+        padding: 12px;
       }
 
       #combined-settings-card {
         width: 100%;
         max-width: none;
-        height: auto;
-        max-height: none;
-        min-width: 0;
-        margin: 0;
-      }
-
-      #combined-settings-card > div:first-child {
-        padding: 8px 12px;
-      }
-
-      #combined-settings-card > div:first-child h3 {
-        font-size: 16px;
+        margin: 0 auto;
       }
 
       #combined-settings-content {
-        max-height: none;
-        min-width: 0;
-        padding: 8px 10px;
-        overflow: hidden;
-      }
-
-      #combined-settings-content > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 6px;
-      }
-
-      #combined-settings-content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 5px;
-      }
-
-      #combined-settings-content .space-y-1 > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 2px;
+        max-height: calc(100vh - 92px);
+        max-height: calc(100dvh - 92px);
+        padding: 20px;
       }
 
       #combined-grade-count-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
       }
 
       #combined-grade-count-grid > div,
@@ -1091,46 +1065,7 @@
       }
 
       #combined-settings-content .combined-exchange-date-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 4px;
-      }
-
-      #combined-settings-content .combined-exchange-date-grid > div {
-        min-width: 0;
-      }
-
-      #combined-settings-content input {
-        width: 100%;
-        min-width: 0;
-        min-height: 32px;
-        padding: 4px 5px;
-        font-size: 12px;
-        line-height: 1.1;
-      }
-
-      #combined-settings-content input[type="date"] {
-        font-size: 11px;
-        letter-spacing: -0.04em;
-      }
-
-      #combined-settings-content label {
-        font-size: 12px;
-        line-height: 1.2;
-      }
-
-      #combined-settings-content > div:first-child {
-        padding-bottom: 5px;
-      }
-
-      #combined-settings-content > div:last-child {
-        padding-top: 0;
-      }
-
-      #combined-settings-content button {
-        min-height: 34px;
-        padding: 7px 10px;
-        font-size: 13px;
-        line-height: 1.2;
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .selection-mobile-card {
@@ -1593,7 +1528,7 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 4mm;
+        margin: 8mm 8mm;
       }
       * {
         -webkit-print-color-adjust: exact !important;
@@ -1637,96 +1572,12 @@
       }
       .print-table th, .print-table td {
         border: 1px solid #4b5563 !important;
-        padding: 3px 3px !important;
+        padding: 6px 6px !important;
       }
       .print-table th {
         background-color: #f3f4f6 !important;
         color: #111827 !important;
         font-weight: bold !important;
-      }
-
-      /* 班際輪換總覽：維持四欄內容結構，縮小字級與留白以完整落在 A4。 */
-      #rotation-print-container > .print-page {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      #rotation-print-container > .print-page > div:first-child {
-        margin-bottom: 3px !important;
-      }
-      #rotation-print-container > .print-page h2 {
-        font-size: 13pt !important;
-      }
-      #rotation-print-container > .print-page .print-table {
-        width: 100% !important;
-        max-width: 100% !important;
-        table-layout: fixed !important;
-      }
-      #rotation-print-container > .print-page .print-table th {
-        padding: .7mm .4mm !important;
-        font-size: 6.4pt !important;
-        line-height: 1.05 !important;
-      }
-      #rotation-print-container > .print-page .print-table td {
-        max-width: 0 !important;
-        padding: .4mm !important;
-        overflow-wrap: anywhere !important;
-        word-break: break-word !important;
-      }
-      #rotation-print-container > .print-page .print-table .text-sm {
-        font-size: 6.4pt !important;
-        line-height: 1.05 !important;
-      }
-      #rotation-print-container > .print-page .print-table .text-xs {
-        font-size: 5.8pt !important;
-        line-height: 1.05 !important;
-      }
-      #rotation-print-container > .print-page .print-table td > *,
-      #rotation-print-container > .print-page .print-table .flex {
-        min-width: 0 !important;
-        max-width: 100% !important;
-      }
-      #rotation-print-container > .print-page .print-table [class*="space-y-"] > * + * {
-        margin-top: 0 !important;
-      }
-
-      /* 各班任務卡：保留原有區塊與欄位順序，只收緊字級和外側留白。 */
-      #print-individual-tasks-container .print-page {
-        padding: 1mm !important;
-      }
-      #print-individual-tasks-container .print-page > div:first-child {
-        margin-bottom: 2mm !important;
-      }
-      #print-individual-tasks-container h1 {
-        font-size: 13pt !important;
-      }
-      #print-individual-tasks-container .text-lg {
-        font-size: 8pt !important;
-      }
-      #print-individual-tasks-container .text-base {
-        font-size: 7pt !important;
-      }
-      #print-individual-tasks-container .text-sm {
-        font-size: 6.5pt !important;
-      }
-      #print-individual-tasks-container .text-xs {
-        font-size: 5.8pt !important;
-      }
-      #print-individual-tasks-container .print-page > div:nth-child(2) {
-        gap: 4mm !important;
-      }
-      #print-individual-tasks-container .print-page .border-2 {
-        padding: 2.5mm !important;
-      }
-      #print-individual-tasks-container .print-page .text-right {
-        white-space: nowrap !important;
-        font-size: 6.5pt !important;
-        letter-spacing: -.03em !important;
-      }
-      #print-individual-tasks-container .print-page .text-lg,
-      #print-individual-tasks-container .print-page .text-base,
-      #print-individual-tasks-container .print-page .text-sm,
-      #print-individual-tasks-container .print-page .text-xs {
-        line-height: 1.1 !important;
       }
 
       /* 書箱清冊專用列印：由按鈕動態套用 A3 直式 @page 設定。 */
@@ -1913,7 +1764,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.64
+      圖書館系統 v4.1.63
     </div>
   </aside>
 

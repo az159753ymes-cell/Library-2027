@@ -1,9 +1,0 @@
-{
-	"private": true,
-	"scripts": {
-		"optimize:assets": "node tools/optimize-image-assets.mjs"
-	},
-	"devDependencies": {
-		"sharp": "0.35.4"
-	}
-}
