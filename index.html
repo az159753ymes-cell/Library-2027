@@ -1160,8 +1160,16 @@
         #combined-settings-content input[type="date"] {
           position: relative;
           z-index: 2;
+          /* 保留 date 的原生日曆功能，但取消 Safari 的內建最小欄寬。 */
+          -webkit-appearance: none;
+          appearance: none;
+          display: block;
           color: transparent !important;
           -webkit-text-fill-color: transparent;
+        }
+
+        #combined-settings-content .combined-exchange-date-grid {
+          gap: 10px;
         }
 
         #combined-settings-content .ios-date-value {
