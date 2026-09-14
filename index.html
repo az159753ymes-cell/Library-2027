@@ -1030,27 +1030,48 @@
         text-align: center;
       }
 
-      /* 輪換設定在手機上避免原生日期欄位與雙欄版面向右溢出。 */
+      /* 輪換設定在手機上採緊湊一頁式版面，避免捲動與欄位裁切。 */
       #combined-settings-modal {
-        align-items: flex-start;
-        overflow-y: auto;
-        padding: 12px;
+        align-items: center;
+        overflow: hidden;
+        padding: 8px;
       }
 
       #combined-settings-card {
         width: 100%;
         max-width: none;
-        margin: 0 auto;
+        margin: 0;
+      }
+
+      #combined-settings-card > div:first-child {
+        padding: 10px 16px;
+      }
+
+      #combined-settings-card > div:first-child h3 {
+        font-size: 18px;
       }
 
       #combined-settings-content {
-        max-height: calc(100vh - 92px);
-        max-height: calc(100dvh - 92px);
-        padding: 20px;
+        max-height: none;
+        padding: 12px;
+        overflow: visible;
+      }
+
+      #combined-settings-content > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 12px;
+      }
+
+      #combined-settings-content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 8px;
+      }
+
+      #combined-settings-content .space-y-1 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 4px;
       }
 
       #combined-grade-count-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
       }
 
       #combined-grade-count-grid > div,
@@ -1065,7 +1086,35 @@
       }
 
       #combined-settings-content .combined-exchange-date-grid {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      #combined-settings-content input {
+        min-height: 40px;
+        padding: 6px 8px;
+        font-size: 14px;
+      }
+
+      #combined-settings-content input[type="date"] {
+        font-size: 13px;
+      }
+
+      #combined-settings-content label {
+        line-height: 1.2;
+      }
+
+      #combined-settings-content > div:first-child {
+        padding-bottom: 10px;
+      }
+
+      #combined-settings-content > div:last-child {
+        padding-top: 0;
+      }
+
+      #combined-settings-content button {
+        padding: 10px 12px;
+        line-height: 1.2;
       }
 
       .selection-mobile-card {
@@ -1764,7 +1813,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.63
+      圖書館系統 v4.1.64
     </div>
   </aside>
 
