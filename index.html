@@ -1037,48 +1037,50 @@
 
       /* 輪換設定在手機上採緊湊一頁式版面，避免捲動與欄位裁切。 */
       #combined-settings-modal {
-        align-items: flex-start;
-        overflow-y: auto;
-        padding: 12px 8px;
+        align-items: center;
+        overflow: hidden;
+        padding: 8px;
       }
 
       #combined-settings-card {
         width: 100%;
         max-width: none;
+        height: auto;
+        max-height: none;
         min-width: 0;
-        margin: 0 auto;
+        margin: 0;
       }
 
       #combined-settings-card > div:first-child {
-        padding: 10px 16px;
+        padding: 8px 12px;
       }
 
       #combined-settings-card > div:first-child h3 {
-        font-size: 18px;
+        font-size: 16px;
       }
 
       #combined-settings-content {
         max-height: none;
         min-width: 0;
-        padding: 12px;
-        overflow: visible;
+        padding: 8px 10px;
+        overflow: hidden;
       }
 
       #combined-settings-content > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 12px;
+        margin-top: 6px;
       }
 
       #combined-settings-content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 8px;
+        margin-top: 5px;
       }
 
       #combined-settings-content .space-y-1 > :not([hidden]) ~ :not([hidden]) {
-        margin-top: 4px;
+        margin-top: 2px;
       }
 
       #combined-grade-count-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 8px;
       }
 
       #combined-grade-count-grid > div,
@@ -1093,8 +1095,8 @@
       }
 
       #combined-settings-content .combined-exchange-date-grid {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 6px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
       }
 
       #combined-settings-content .combined-exchange-date-grid > div {
@@ -1102,21 +1104,26 @@
       }
 
       #combined-settings-content input {
-        min-height: 40px;
-        padding: 6px 8px;
-        font-size: 14px;
+        width: 100%;
+        min-width: 0;
+        min-height: 32px;
+        padding: 4px 5px;
+        font-size: 12px;
+        line-height: 1.1;
       }
 
       #combined-settings-content input[type="date"] {
-        font-size: 13px;
+        font-size: 11px;
+        letter-spacing: -0.04em;
       }
 
       #combined-settings-content label {
+        font-size: 12px;
         line-height: 1.2;
       }
 
       #combined-settings-content > div:first-child {
-        padding-bottom: 10px;
+        padding-bottom: 5px;
       }
 
       #combined-settings-content > div:last-child {
@@ -1124,7 +1131,9 @@
       }
 
       #combined-settings-content button {
-        padding: 10px 12px;
+        min-height: 34px;
+        padding: 7px 10px;
+        font-size: 13px;
         line-height: 1.2;
       }
 
@@ -1588,7 +1597,7 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 6mm;
+        margin: 4mm;
       }
       * {
         -webkit-print-color-adjust: exact !important;
@@ -1646,49 +1655,82 @@
         padding: 0 !important;
       }
       #rotation-print-container > .print-page > div:first-child {
-        margin-bottom: 6px !important;
+        margin-bottom: 3px !important;
       }
       #rotation-print-container > .print-page h2 {
-        font-size: 16pt !important;
+        font-size: 13pt !important;
+      }
+      #rotation-print-container > .print-page .print-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        table-layout: fixed !important;
       }
       #rotation-print-container > .print-page .print-table th {
-        padding: 1.2mm 0.8mm !important;
-        font-size: 7.5pt !important;
-        line-height: 1.15 !important;
+        padding: .7mm .4mm !important;
+        font-size: 6.4pt !important;
+        line-height: 1.05 !important;
       }
       #rotation-print-container > .print-page .print-table td {
-        padding: 0.8mm !important;
+        max-width: 0 !important;
+        padding: .4mm !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
       }
       #rotation-print-container > .print-page .print-table .text-sm {
-        font-size: 7.5pt !important;
-        line-height: 1.15 !important;
+        font-size: 6.4pt !important;
+        line-height: 1.05 !important;
       }
       #rotation-print-container > .print-page .print-table .text-xs {
-        font-size: 6.5pt !important;
-        line-height: 1.15 !important;
+        font-size: 5.8pt !important;
+        line-height: 1.05 !important;
+      }
+      #rotation-print-container > .print-page .print-table td > *,
+      #rotation-print-container > .print-page .print-table .flex {
+        min-width: 0 !important;
+        max-width: 100% !important;
+      }
+      #rotation-print-container > .print-page .print-table [class*="space-y-"] > * + * {
+        margin-top: 0 !important;
       }
 
       /* 各班任務卡：保留原有區塊與欄位順序，只收緊字級和外側留白。 */
       #print-individual-tasks-container .print-page {
-        padding: 2mm !important;
+        padding: 1mm !important;
       }
       #print-individual-tasks-container .print-page > div:first-child {
-        margin-bottom: 4mm !important;
+        margin-bottom: 2mm !important;
       }
       #print-individual-tasks-container h1 {
-        font-size: 16pt !important;
+        font-size: 13pt !important;
       }
       #print-individual-tasks-container .text-lg {
-        font-size: 10pt !important;
-      }
-      #print-individual-tasks-container .text-base {
-        font-size: 9pt !important;
-      }
-      #print-individual-tasks-container .text-sm {
         font-size: 8pt !important;
       }
-      #print-individual-tasks-container .text-xs {
+      #print-individual-tasks-container .text-base {
         font-size: 7pt !important;
+      }
+      #print-individual-tasks-container .text-sm {
+        font-size: 6.5pt !important;
+      }
+      #print-individual-tasks-container .text-xs {
+        font-size: 5.8pt !important;
+      }
+      #print-individual-tasks-container .print-page > div:nth-child(2) {
+        gap: 4mm !important;
+      }
+      #print-individual-tasks-container .print-page .border-2 {
+        padding: 2.5mm !important;
+      }
+      #print-individual-tasks-container .print-page .text-right {
+        white-space: nowrap !important;
+        font-size: 6.5pt !important;
+        letter-spacing: -.03em !important;
+      }
+      #print-individual-tasks-container .print-page .text-lg,
+      #print-individual-tasks-container .print-page .text-base,
+      #print-individual-tasks-container .print-page .text-sm,
+      #print-individual-tasks-container .print-page .text-xs {
+        line-height: 1.1 !important;
       }
 
       /* 書箱清冊專用列印：由按鈕動態套用 A3 直式 @page 設定。 */
