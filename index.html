@@ -1145,6 +1145,40 @@
         -webkit-min-logical-width: 0;
       }
 
+      /* Safari 會以「2026年9月4日」呈現原生日期文字，長度無法由一般 CSS
+         穩定控制。保留可點擊的原生日曆，改以緊湊的網站格式顯示日期。 */
+      @supports (-webkit-touch-callout: none) {
+        #combined-settings-content .space-y-1 {
+          position: relative;
+        }
+
+        #combined-settings-content input[type="date"] {
+          position: relative;
+          z-index: 2;
+          color: transparent !important;
+          -webkit-text-fill-color: transparent;
+        }
+
+        #combined-settings-content .ios-date-value {
+          position: absolute;
+          right: 2.75rem;
+          bottom: 0;
+          left: .875rem;
+          z-index: 1;
+          display: flex;
+          height: 2.5rem;
+          align-items: center;
+          color: #2C3E35;
+          font-size: .875rem;
+          font-weight: 600;
+          pointer-events: none;
+        }
+
+        #combined-settings-content input[type="date"]::-webkit-calendar-picker-indicator {
+          opacity: 1;
+        }
+      }
+
       #combined-grade-count-grid input {
         flex: 1 1 0;
       }
@@ -2332,6 +2366,7 @@
               <label class="block font-bold text-[#2C5E43] text-base">1. 發書（期初）</label>
               <input type="date" id="combined-date-issue" autocomplete="off"
                 class="w-full bg-[#FAF6F0] border border-[#D8CEBE] focus:border-[#2C5E43] focus:ring-2 focus:ring-[#2C5E43]/20 rounded-xl px-3.5 py-2 text-base font-semibold text-[#2C3E35] outline-none">
+              <span class="ios-date-value" aria-hidden="true" data-date-display-for="combined-date-issue"></span>
             </div>
 
             <div class="space-y-1">
@@ -2341,11 +2376,13 @@
                   <label for="combined-date-ex1-check" class="block text-sm font-semibold text-[#52796F]">教師檢查日</label>
                   <input type="date" id="combined-date-ex1-check" autocomplete="off"
                     class="w-full bg-[#FAF6F0] border border-[#D8CEBE] focus:border-[#2C5E43] focus:ring-2 focus:ring-[#2C5E43]/20 rounded-xl px-3.5 py-2 text-base font-semibold text-[#2C3E35] outline-none">
+                  <span class="ios-date-value" aria-hidden="true" data-date-display-for="combined-date-ex1-check"></span>
                 </div>
                 <div class="space-y-1">
                   <label for="combined-date-ex1" class="block text-sm font-semibold text-[#52796F]">書箱交換日</label>
                   <input type="date" id="combined-date-ex1" autocomplete="off"
                     class="w-full bg-[#FAF6F0] border border-[#D8CEBE] focus:border-[#2C5E43] focus:ring-2 focus:ring-[#2C5E43]/20 rounded-xl px-3.5 py-2 text-base font-semibold text-[#2C3E35] outline-none">
+                  <span class="ios-date-value" aria-hidden="true" data-date-display-for="combined-date-ex1"></span>
                 </div>
               </div>
             </div>
@@ -2357,11 +2394,13 @@
                   <label for="combined-date-ex2-check" class="block text-sm font-semibold text-[#52796F]">教師檢查日</label>
                   <input type="date" id="combined-date-ex2-check" autocomplete="off"
                     class="w-full bg-[#FAF6F0] border border-[#D8CEBE] focus:border-[#2C5E43] focus:ring-2 focus:ring-[#2C5E43]/20 rounded-xl px-3.5 py-2 text-base font-semibold text-[#2C3E35] outline-none">
+                  <span class="ios-date-value" aria-hidden="true" data-date-display-for="combined-date-ex2-check"></span>
                 </div>
                 <div class="space-y-1">
                   <label for="combined-date-ex2" class="block text-sm font-semibold text-[#52796F]">書箱交換日</label>
                   <input type="date" id="combined-date-ex2" autocomplete="off"
                     class="w-full bg-[#FAF6F0] border border-[#D8CEBE] focus:border-[#2C5E43] focus:ring-2 focus:ring-[#2C5E43]/20 rounded-xl px-3.5 py-2 text-base font-semibold text-[#2C3E35] outline-none">
+                  <span class="ios-date-value" aria-hidden="true" data-date-display-for="combined-date-ex2"></span>
                 </div>
               </div>
             </div>
@@ -2370,6 +2409,7 @@
               <label class="block font-bold text-[#2C5E43] text-base">4. 回收（期末）</label>
               <input type="date" id="combined-date-return" autocomplete="off"
                 class="w-full bg-[#FAF6F0] border border-[#D8CEBE] focus:border-[#2C5E43] focus:ring-2 focus:ring-[#2C5E43]/20 rounded-xl px-3.5 py-2 text-base font-semibold text-[#2C3E35] outline-none">
+              <span class="ios-date-value" aria-hidden="true" data-date-display-for="combined-date-return"></span>
             </div>
           </div>
         </div>
@@ -4861,6 +4901,19 @@
     }
 
     // 融合對話視窗 (齒輪按鈕點擊): 班級與輪換日程設定 Modal
+    function refreshIosDateDisplays() {
+      document.querySelectorAll('[data-date-display-for]').forEach(display => {
+        const input = document.getElementById(display.dataset.dateDisplayFor);
+        // 日期欄位儲存格式固定為 YYYY-MM-DD，顯示時改用窄版 YYYY/MM/DD。
+        display.textContent = input?.value ? input.value.replaceAll('-', '/') : '請選擇日期';
+      });
+    }
+
+    document.querySelectorAll('#combined-settings-content input[type="date"]').forEach(input => {
+      input.addEventListener('input', refreshIosDateDisplays);
+      input.addEventListener('change', refreshIosDateDisplays);
+    });
+
     function openCombinedSettingsModal() {
       if (!requireAdmin()) return;
       const g7Input = document.getElementById('combined-g7-count');
@@ -4881,6 +4934,7 @@
       if (ex2CheckInput) ex2CheckInput.value = rotationDates.exchange2CheckDate || '';
       if (ex2Input) ex2Input.value = rotationDates.exchange2Date || '';
       if (returnInput) returnInput.value = rotationDates.returnDate || '';
+      refreshIosDateDisplays();
 
       const modal = document.getElementById('combined-settings-modal');
       if (modal) modal.classList.remove('hidden');
