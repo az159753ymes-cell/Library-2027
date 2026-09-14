@@ -3611,6 +3611,10 @@
           console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
           return;
         }
+        // 管理員已在畫面上修改、但尚未按 LIBRARY 正式儲存時，不能讓任何
+        // 雲端回傳（例如另存教師選書開放時段所觸發的快照）蓋回舊清冊。
+        // 否則新建書箱會先在畫面消失，接著被當成舊資料發布並從教師端移除。
+        if (hasUnsavedAdminChanges) return;
         if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
         const data = snapshot.data();
         booksData = Array.isArray(data.booksData) ? data.booksData : booksData;
@@ -5971,7 +5975,7 @@
         if (isG7P1) {
           // 七年級首時段預設活動：僅簡潔顯示「參觀圖書館＆新生齊步走」，不加「來自【圖書館】」與提示說明
           return `<div onclick="activateInlineCell('${className}', '${slotKey}', event)" 
-            class="bg-[#F3E6D5] p-3 rounded-xl cursor-pointer border-none shadow-none hover:bg-[#EBD8C3] transition flex items-center justify-center min-h-[58px]">
+          class="bg-[#FCF4EC] p-3 rounded-xl cursor-pointer border-none shadow-none hover:bg-[#F8EADD] transition flex items-center justify-center min-h-[58px]">
               <div class="font-bold text-[#2C5E43] text-sm lg:text-base leading-snug text-center">
                 參觀圖書館＆新生齊步走
               </div>
@@ -5987,14 +5991,14 @@
       const book = getBookByCode(slotInfo.code);
       const title = book ? sanitizeTitle(book.title) : `書號無效，請重新指定（${slotInfo.code}）`;
       
-      // 來源底色採足夠對比的常態色：手動指定為淺粉、教師選書匯入為淺藍、系統隨機分派為淺綠。
+      // 來源底色採柔和低彩度色：手動指定為淡粉、教師選書匯入為淡藍、系統隨機分派為淡綠。
       const isSpecified = slotInfo.manualSpecified === true;
       const isTeacherSelection = slotInfo.selectionSource === 'teacher';
       const cardBg = isSpecified
-        ? 'bg-[#FBE3E5] hover:bg-[#F6D0D4]'
+        ? 'bg-[#FDF1F2] hover:bg-[#FAE3E6]'
         : isTeacherSelection
-          ? 'bg-[#D6EAF8] hover:bg-[#BDDDF1]'
-          : 'bg-[#D9EADF] hover:bg-[#C4DDCE]';
+          ? 'bg-[#EEF7FC] hover:bg-[#DDEFF8]'
+          : 'bg-[#EEF7F0] hover:bg-[#DCEFE1]';
       
       const fromPlace = slotInfo.fromPlace || "圖書館";
       const toPlace = slotInfo.toPlace || "圖書館";
