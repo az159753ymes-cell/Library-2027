@@ -79,6 +79,11 @@
       overflow-x: hidden;
     }
 
+    /* 短日期覆蓋文字僅供窄螢幕 Safari 使用，桌機維持原生日期欄位。 */
+    .ios-date-value {
+      display: none;
+    }
+
     #auth-gate {
       position: fixed;
       inset: 0;
@@ -1161,7 +1166,7 @@
 
         #combined-settings-content .ios-date-value {
           position: absolute;
-          right: 2.75rem;
+          right: .875rem;
           bottom: 0;
           left: .875rem;
           /* 必須在日期輸入欄的白色背景之上；pointer-events 仍會穿透到原生日曆。 */
@@ -1176,7 +1181,13 @@
         }
 
         #combined-settings-content input[type="date"]::-webkit-calendar-picker-indicator {
-          opacity: 1;
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          opacity: 0;
+          cursor: pointer;
         }
       }
 
