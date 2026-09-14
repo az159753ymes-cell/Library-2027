@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$nodePath = 'C:\Users\az159\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
+$nodeCommand = Get-Command node -CommandType Application -ErrorAction Stop
+$nodePath = $nodeCommand.Source
 $serverScript = Join-Path $PSScriptRoot 'local-preview-server.js'
 $chromePath = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 $siteUrl = 'http://localhost:4173/'

@@ -17,6 +17,7 @@
   <link rel="preload" as="image" href="assets/login-error-help-illustration-v10.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/mobile-login-reminder-handlettered-v8.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/auth-error-reminder-handlettered-v5.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/wugao-library-banner-v5-1500.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/sidebar-student-presenting-transparent-v3-440.webp" type="image/webp" fetchpriority="high">
   <script>
@@ -1030,27 +1031,90 @@
         text-align: center;
       }
 
-      /* 輪換設定在手機上避免原生日期欄位與雙欄版面向右溢出。 */
+      /* 手機班際輪換總覽直接呈現兩張表，不再使用卡片框或標題區塊。 */
+      #mobile-print-preview.mobile-rotation-overview header {
+        min-height: 52px;
+        justify-content: flex-end;
+        border-bottom: 0;
+        background: #FAF6F0;
+        box-shadow: none;
+      }
+
+      #mobile-print-preview.mobile-rotation-overview header h2 {
+        display: none;
+      }
+
+      #mobile-print-preview.mobile-rotation-overview #mobile-print-preview-content {
+        /* 總覽表可橫向捲動，但左右保留安全留白，避免表格貼齊手機邊緣。 */
+        padding: 12px 16px 20px;
+      }
+
+      #mobile-print-preview.mobile-rotation-overview .mobile-preview-rotation .print-page {
+        margin: 0;
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      #mobile-print-preview.mobile-rotation-overview .mobile-preview-rotation .print-page + .print-page {
+        margin-top: 20px;
+      }
+
+      /* 手機版輪換設定：以緊湊雙欄日期列讓全部欄位與儲存鈕可同頁查看。 */
       #combined-settings-modal {
-        align-items: flex-start;
-        overflow-y: auto;
-        padding: 12px;
+        align-items: center;
+        overflow: hidden;
+        padding: 8px;
       }
 
       #combined-settings-card {
         width: 100%;
         max-width: none;
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
         margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #combined-settings-card > :first-child {
+        flex: 0 0 auto;
+        padding: 8px 14px;
+      }
+
+      #combined-settings-card h3 {
+        font-size: 16px;
       }
 
       #combined-settings-content {
-        max-height: calc(100vh - 92px);
-        max-height: calc(100dvh - 92px);
-        padding: 20px;
+        max-height: none;
+        overflow: hidden;
+        padding: 10px 14px 12px;
+        flex: 1 1 auto;
+      }
+
+      #combined-settings-content.space-y-6 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 10px;
+      }
+
+      #combined-settings-content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 8px;
+      }
+
+      #combined-settings-content .space-y-1 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 2px;
       }
 
       #combined-grade-count-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      #combined-settings-content .pb-4 {
+        padding-bottom: 10px;
       }
 
       #combined-grade-count-grid > div,
@@ -1065,7 +1129,25 @@
       }
 
       #combined-settings-content .combined-exchange-date-grid {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      #combined-settings-content .combined-exchange-date-grid label {
+        overflow: hidden;
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      #combined-settings-content input,
+      #combined-settings-content button {
+        padding-top: 7px;
+        padding-bottom: 7px;
+      }
+
+      #combined-settings-content .pt-2 {
+        padding-top: 4px;
       }
 
       .selection-mobile-card {
@@ -5768,7 +5850,7 @@
         if (isG7P1) {
           // 七年級首時段預設活動：僅簡潔顯示「參觀圖書館＆新生齊步走」，不加「來自【圖書館】」與提示說明
           return `<div onclick="activateInlineCell('${className}', '${slotKey}', event)" 
-            class="bg-[#FAF6F0] p-3 rounded-xl cursor-pointer border-none shadow-none hover:bg-[#F5EFEA] transition flex items-center justify-center min-h-[58px]">
+            class="bg-[#F3E6D5] p-3 rounded-xl cursor-pointer border-none shadow-none hover:bg-[#EBD8C3] transition flex items-center justify-center min-h-[58px]">
               <div class="font-bold text-[#2C5E43] text-sm lg:text-base leading-snug text-center">
                 參觀圖書館＆新生齊步走
               </div>
@@ -5784,14 +5866,14 @@
       const book = getBookByCode(slotInfo.code);
       const title = book ? sanitizeTitle(book.title) : `書號無效，請重新指定（${slotInfo.code}）`;
       
-      // 管理員手動指定、教師選書匯入與隨機分派各自使用固定底色，便於辨識來源。
+      // 來源底色採足夠對比的常態色：手動指定為淺粉、教師選書匯入為淺藍、系統隨機分派為淺綠。
       const isSpecified = slotInfo.manualSpecified === true;
       const isTeacherSelection = slotInfo.selectionSource === 'teacher';
       const cardBg = isSpecified
-        ? 'bg-[#F5EFEA] hover:bg-[#EFE7DF]'
+        ? 'bg-[#FBE3E5] hover:bg-[#F6D0D4]'
         : isTeacherSelection
-          ? 'bg-[#EAF0EC] hover:bg-[#DDE7E0]'
-          : 'bg-[#F2EFDB] hover:bg-[#E9E5CC]';
+          ? 'bg-[#D6EAF8] hover:bg-[#BDDDF1]'
+          : 'bg-[#D9EADF] hover:bg-[#C4DDCE]';
       
       const fromPlace = slotInfo.fromPlace || "圖書館";
       const toPlace = slotInfo.toPlace || "圖書館";
@@ -6546,6 +6628,11 @@
       if (!source) return null;
 
       const clone = source.cloneNode(true);
+      // 手機版班際輪換預覽僅保留七、八年級總覽，避免逐班任務卡造成冗長捲動。
+      if (previewType === 'rotation') {
+        clone.querySelector('#print-individual-tasks-container')?.remove();
+        clone.querySelectorAll('.print-page > div:first-child').forEach(title => title.remove());
+      }
       clone.removeAttribute('id');
       clone.removeAttribute('aria-hidden');
       clone.classList.remove('hidden');
@@ -6564,7 +6651,8 @@
 
       mobilePrintPreviewTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       const requestId = ++mobilePrintPreviewRequest;
-      title.textContent = '列印';
+      modal.classList.toggle('mobile-rotation-overview', previewType === 'rotation');
+      title.textContent = previewType === 'rotation' ? '班際輪換總覽' : '列印';
       content.innerHTML = '<p class="rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] p-4 text-center font-bold text-[#52796F]">正在整理完整內容⋯</p>';
       modal.classList.remove('hidden');
 
@@ -6595,6 +6683,7 @@
       const content = document.getElementById('mobile-print-preview-content');
       ++mobilePrintPreviewRequest;
       if (modal) modal.classList.add('hidden');
+      if (modal) modal.classList.remove('mobile-rotation-overview');
       if (content) content.replaceChildren();
       mobilePrintPreviewTrigger?.focus();
       mobilePrintPreviewTrigger = null;
