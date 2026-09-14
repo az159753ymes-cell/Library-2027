@@ -1164,7 +1164,8 @@
           right: 2.75rem;
           bottom: 0;
           left: .875rem;
-          z-index: 1;
+          /* 必須在日期輸入欄的白色背景之上；pointer-events 仍會穿透到原生日曆。 */
+          z-index: 3;
           display: flex;
           height: 2.5rem;
           align-items: center;
