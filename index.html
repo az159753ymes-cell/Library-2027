@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/login-error-help-illustration-v10.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/mobile-login-reminder-handlettered-v8.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/auth-error-reminder-handlettered-v5.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
@@ -179,11 +180,6 @@
         width: calc(100% + 20px);
         height: auto;
         margin-left: -10px;
-        visibility: hidden;
-      }
-
-      #mobile-login-intro.mobile-login-intro--ready .mobile-login-intro-illustration {
-        visibility: visible;
       }
 
       .mobile-login-reminder-art {
@@ -2612,34 +2608,6 @@
         el.classList.toggle('hidden', !message);
       }
     }
-
-    function waitForMobileIntroImage(src) {
-      return new Promise(resolve => {
-        const image = new Image();
-        image.onload = () => {
-          if (typeof image.decode !== 'function') {
-            resolve();
-            return;
-          }
-          image.decode().catch(() => {}).then(resolve);
-        };
-        image.onerror = resolve;
-        image.src = src;
-      });
-    }
-
-    function prepareMobileLoginIllustration() {
-      const intro = document.getElementById('mobile-login-intro');
-      if (!intro) return;
-      Promise.all([
-        'assets/login-error-help-illustration-v10.png',
-        'assets/mobile-login-reminder-handlettered-v8.png'
-      ].map(waitForMobileIntroImage)).then(() => {
-        intro.classList.add('mobile-login-intro--ready');
-      });
-    }
-
-    prepareMobileLoginIllustration();
 
     function enterMobileLogin() {
       document.getElementById('mobile-login-intro')?.classList.add('hidden');

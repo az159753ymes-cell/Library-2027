@@ -3,6 +3,7 @@ backups/
 
 # 開發過程的暫存與解壓資料
 scratch/
+node_modules/
 
 # Firebase Hosting 本機部署快取
 .firebase/
