@@ -180,6 +180,12 @@
         width: calc(100% + 20px);
         height: auto;
         margin-left: -10px;
+        /* 兩張 PNG 都完成解碼後才一起顯示，避免行動瀏覽器逐區塊繪製。 */
+        visibility: hidden;
+      }
+
+      #mobile-login-intro.mobile-login-intro--ready .mobile-login-intro-illustration {
+        visibility: visible;
       }
 
       .mobile-login-reminder-art {
@@ -2542,6 +2548,38 @@
       }
     }
 
+    // 預載只保證檔案已下載，不保證瀏覽器已把圖片解碼成可繪製的畫面。
+    // 先完成解碼，再切換登入或首頁畫面，便不會看到插圖一格一格補上。
+    function decodeIllustration(src) {
+      return new Promise(resolve => {
+        const image = new Image();
+        image.decoding = 'sync';
+        image.onload = () => {
+          if (typeof image.decode !== 'function') {
+            resolve();
+            return;
+          }
+          image.decode().catch(() => {}).then(resolve);
+        };
+        image.onerror = resolve;
+        image.src = src;
+      });
+    }
+
+    const mobileLoginIllustrationReady = Promise.all([
+      'assets/login-error-help-illustration-v10.png',
+      'assets/mobile-login-reminder-handlettered-v8.png'
+    ].map(decodeIllustration));
+
+    const homeIllustrationsReady = Promise.all([
+      'assets/wugao-library-banner-v5-1500.webp',
+      'assets/sidebar-student-presenting-transparent-v3-440.webp'
+    ].map(decodeIllustration));
+
+    mobileLoginIllustrationReady.then(() => {
+      document.getElementById('mobile-login-intro')?.classList.add('mobile-login-intro--ready');
+    });
+
     function enterMobileLogin() {
       document.getElementById('mobile-login-intro')?.classList.add('hidden');
     }
@@ -3695,6 +3733,8 @@
       setAuthMessage('正在確認您的使用權限⋯');
 
       isAdmin = isAdministratorUser(user);
+      // 不讓首頁在圖片仍分區解碼時露出；下載或解碼失敗仍會繼續進入系統。
+      await homeIllustrationsReady;
       document.getElementById('auth-gate').classList.add('hidden');
       document.getElementById('app-sidebar').classList.remove('hidden');
       document.getElementById('app-main').classList.remove('hidden');
