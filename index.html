@@ -2304,6 +2304,7 @@
           <div class="mt-2 flex flex-wrap gap-2">
             <button type="button" onclick="refreshCatalogFromServer()" class="rounded-lg border border-[#B8A894] px-3 py-1.5">重新讀取正式清冊</button>
             <button type="button" data-local-catalog-backup onclick="downloadLocalCatalogBackup()" class="rounded-lg border border-[#B8A894] px-3 py-1.5">下載本機清冊備份</button>
+            <button id="discard-local-admin-drafts" type="button" onclick="discardLocalAdminDrafts()" class="hidden rounded-lg border border-[#B7791F] px-3 py-1.5 text-[#8C5A3C]">放棄本機草稿，採用雲端資料</button>
           </div>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
             <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，還須按 LIBRARY → 確認儲存。</p>
@@ -4124,6 +4125,13 @@
         button.disabled = !catalogHasLocalCache && !hasUnsavedAdminChanges;
         button.classList.toggle('opacity-50', button.disabled);
       });
+      const discardDraftsButton = document.getElementById('discard-local-admin-drafts');
+      if (discardDraftsButton) {
+        const canDiscardDrafts = hasUnsavedAdminChanges && catalogLoadState === 'ready'
+          && adminSettingsLoadState === 'ready' && Array.isArray(catalogServerBooks);
+        discardDraftsButton.classList.toggle('hidden', !canDiscardDrafts);
+        discardDraftsButton.disabled = !canDiscardDrafts;
+      }
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
       if (catalogLoadState !== 'review') return;
       const localByCode = new Map((catalogLocalBooks || []).map(book => [String(book.code), book]));
@@ -4245,6 +4253,61 @@
         renderCatalogSource();
         updateCloudSyncStatusUi();
         console.error('讀取正式書香清冊失敗：', error);
+      }
+    }
+
+    async function discardLocalAdminDrafts() {
+      if (!requireAdmin() || !firestoreDb || !hasUnsavedAdminChanges) return;
+      if (!confirm('這會放棄此電腦尚未儲存的清冊、輪換與學期草稿，並改用 Firestore 正式資料。雲端資料不會被修改。\n\n確定要繼續嗎？')) return;
+      const button = document.getElementById('discard-local-admin-drafts');
+      if (button) button.disabled = true;
+      try {
+        const [catalogSnapshot, semesterSnapshot, settingsSnapshot] = await Promise.all([
+          getCatalogDocument().get({ source: 'server' }),
+          getSemesterDocument().get({ source: 'server' }),
+          firestoreDb.collection('system').doc('settings').get({ source: 'server' })
+        ]);
+        if (!catalogSnapshot.exists || !Array.isArray(catalogSnapshot.data()?.booksData)) {
+          throw new Error('找不到可採用的正式清冊。');
+        }
+        if (!semesterSnapshot.exists) throw new Error('找不到目前學期的正式資料。');
+        const catalog = JSON.parse(JSON.stringify(catalogSnapshot.data().booksData));
+        const semester = semesterSnapshot.data();
+        booksData = catalog;
+        catalogLocalBooks = JSON.parse(JSON.stringify(catalog));
+        catalogServerBooks = JSON.parse(JSON.stringify(catalog));
+        catalogServerUpdatedAt = catalogSnapshot.data().updatedAt?.toDate?.()?.toLocaleString('zh-TW') || '';
+        catalogDocumentMissing = false;
+        catalogLoadState = 'ready';
+        catalogHasLocalCache = true;
+        catalogAcceptedSignature = catalogSignature(catalog);
+        localStorage.setItem(getCatalogKey(), JSON.stringify(catalog));
+        localStorage.setItem(getCatalogBaselineKey(), catalogAcceptedSignature);
+        gradeCounts = semester.gradeCounts || { ...DEFAULT_GRADE_COUNTS };
+        rotationDates = semester.rotationDates || {};
+        rotationSchedule = semester.rotationSchedule || {};
+        grade8HistoryBooks = semester.grade8HistoryBooks || {};
+        localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
+        localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
+        localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
+        localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
+        if (settingsSnapshot.exists && Array.isArray(settingsSnapshot.data().semesterList)) {
+          semesterList = settingsSnapshot.data().semesterList;
+          localStorage.setItem(getSemestersKey(), JSON.stringify(semesterList));
+        }
+        hasUnsavedAdminChanges = false;
+        setCloudSyncStatus('idle');
+        recomputeChainFlow('7');
+        recomputeChainFlow('8');
+        renderAllViews();
+        renderCatalogSource();
+        alert('已放棄此電腦的本機草稿，現在顯示的都是 Firestore 正式資料。');
+      } catch (error) {
+        console.error('採用正式資料失敗：', error);
+        alert(`無法採用正式資料：${getReadableCloudError(error)}`);
+      } finally {
+        if (button) button.disabled = false;
+        renderCatalogSource();
       }
     }
 
