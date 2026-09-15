@@ -2598,6 +2598,7 @@
     // 管理員必須收到 Firestore 的伺服器快照後，才能操作正式資料。
     // 這可避免新電腦先顯示 localStorage／預設排程時被誤當成正式內容。
     let adminCloudDataLoaded = false;
+    let adminCloudLoadRequestId = 0;
     let cloudSemesterUnsubscribe = null;
     let cloudSelectionUnsubscribe = null;
     let teacherPortalUnsubscribe = null;
@@ -3640,23 +3641,24 @@
 
     function bindSemesterCloudListener() {
       if (cloudSemesterUnsubscribe) cloudSemesterUnsubscribe();
+      const requestId = ++adminCloudLoadRequestId;
+      const semesterId = currentSemester;
       setAdminCloudDataLoaded(false);
       setCloudSyncStatus('waiting');
-      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
-        if (snapshot.metadata.fromCache && !adminCloudDataLoaded) {
-          setAdminCloudDataLoaded(false, '正在連線並驗證正式 Firestore 資料，請稍候；目前顯示的暫存內容不可修改或儲存。');
-          return;
-        }
+      const loadTimeout = setTimeout(() => {
+        if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
+        setCloudSyncStatus('failed');
+        setAdminCloudDataLoaded(false, '讀取正式資料超過 15 秒，尚未取得伺服器確認。請重新整理後登入；完成前不能修改或儲存。');
+      }, 15000);
+
+      const applyServerSnapshot = snapshot => {
+        if (requestId !== adminCloudLoadRequestId || semesterId !== currentSemester) return;
         if (!snapshot.exists) {
-          // 正式資料不存在時不可用瀏覽器快取自動建立，避免舊資料覆寫剛完成的發布或還原。
           setCloudSyncStatus('waiting');
           setAdminCloudDataLoaded(false, '找不到目前學期的正式資料，為避免覆寫資料，已禁止修改與儲存。');
           console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
           return;
         }
-        // 管理員已在畫面上修改、但尚未按 LIBRARY 正式儲存時，不能讓任何
-        // 雲端回傳（例如另存教師選書開放時段所觸發的快照）蓋回舊清冊。
-        // 否則新建書箱會先在畫面消失，接著被當成舊資料發布並從教師端移除。
         if (hasUnsavedAdminChanges) return;
         if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
         const data = snapshot.data();
@@ -3672,14 +3674,33 @@
         localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
         recomputeChainFlow('7');
         recomputeChainFlow('8');
+        clearTimeout(loadTimeout);
         setAdminCloudDataLoaded(true);
         if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
         renderAllViews();
-      }, error => {
+      };
+
+      const handleLoadError = error => {
+        if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
+        clearTimeout(loadTimeout);
         setCloudSyncStatus('failed');
-        setAdminCloudDataLoaded(false, '無法讀取正式 Firestore 資料，為避免覆寫資料，已禁止修改與儲存。請確認網路後重新登入。');
+        setAdminCloudDataLoaded(false, '無法讀取正式 Firestore 資料，為避免覆寫資料，已禁止修改與儲存。請重新整理後登入。');
         console.error('讀取學期資料失敗：', error);
-      });
+      };
+
+      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
+        if (snapshot.metadata.fromCache) {
+          if (!adminCloudDataLoaded) {
+            setAdminCloudDataLoaded(false, '正在連線並驗證正式 Firestore 資料，請稍候；目前顯示的暫存內容不可修改或儲存。');
+          }
+          return;
+        }
+        applyServerSnapshot(snapshot);
+      }, handleLoadError);
+
+      // 部分校園或家用網路會讓即時監聽的長連線卡住；額外直接向伺服器讀取一次，
+      // 讓本機預覽仍可取得已驗證的正式資料，或明確回報錯誤。
+      getSemesterDocument().get({ source: 'server' }).then(applyServerSnapshot).catch(handleLoadError);
 
       if (cloudSelectionUnsubscribe) cloudSelectionUnsubscribe();
       cloudSelectionUnsubscribe = firestoreDb.collection('selections').where('semesterId', '==', currentSemester).onSnapshot(snapshot => {
