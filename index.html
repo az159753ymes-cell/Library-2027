@@ -962,6 +962,14 @@
         line-height: 1.25;
       }
 
+      #rotation-action-buttons button.hidden {
+        display: none !important;
+      }
+
+      #rotation-action-buttons.is-readonly {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
       .rotation-mobile-card-title {
         padding: 12px 16px;
         background: #2C5E43;
@@ -1513,6 +1521,263 @@
       display: none;
     }
 
+    /* 書箱清冊在平板採卡片單欄，僅保留此區的窄版規則；全站導覽仍依原本手機斷點。 */
+    @media (max-width: 1279px) {
+      #catalog-table-card {
+        display: none !important;
+      }
+
+      #catalog-workspace {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+        margin-inline: 0 !important;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      #catalog-mobile-cards,
+      .catalog-mobile-row,
+      .catalog-mobile-card,
+      .catalog-mobile-empty-card,
+      .catalog-mobile-form-slot,
+      #catalog-form-column,
+      #catalog-workspace #form-card {
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      #catalog-mobile-cards:not(.hidden) {
+        display: grid !important;
+        gap: 12px;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .catalog-mobile-row,
+      .catalog-mobile-empty-card,
+      .catalog-mobile-form-slot {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .catalog-mobile-card {
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid #E8E1D5;
+        border-radius: 16px;
+        background: #FFFDF9;
+        box-shadow: 0 3px 12px rgba(69, 91, 72, .08);
+      }
+
+      #catalog-form-column {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      #catalog-workspace #form-card {
+        width: 100%;
+        min-width: 0;
+        padding: 12px;
+        border-radius: 16px;
+      }
+
+      #catalog-mobile-cards .catalog-mobile-form-slot #form-card {
+        margin-top: 12px;
+      }
+
+      #catalog-workspace #book-form > div.flex {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      #catalog-workspace #book-form label {
+        width: auto !important;
+        flex-shrink: 0;
+        font-size: 13px;
+      }
+
+      #catalog-workspace #book-form .flex-1.flex,
+      #catalog-workspace #book-form .book-quantity-fields {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        min-width: 0;
+        gap: 4px;
+        font-size: 13px;
+      }
+
+      #catalog-workspace #book-form .book-quantity-fields {
+        display: flex !important;
+        flex: 1 1 0;
+        align-items: center;
+        gap: 3px;
+        white-space: nowrap;
+      }
+
+      #catalog-workspace #book-form .quantity-desktop-only {
+        display: none;
+      }
+
+      #catalog-workspace #book-form .quantity-mobile-only {
+        display: inline;
+      }
+
+      #catalog-workspace #book-form input {
+        min-width: 0;
+        padding: 7px 8px;
+        font-size: 14px;
+      }
+
+      #catalog-workspace #book-form #inputEndNum,
+      #catalog-workspace #book-form #inputCount {
+        width: 0;
+        min-width: 42px;
+        flex: 1 1 0;
+      }
+
+      #catalog-workspace #book-form > div:last-child {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      #catalog-workspace #book-form > div:last-child button {
+        width: calc(50% - 4px);
+        min-width: 0;
+        flex: 0 1 calc(50% - 4px);
+      }
+
+      #catalog-workspace #book-form > div:last-child #save-btn {
+        margin-left: auto;
+      }
+
+      .catalog-mobile-card.is-selected {
+        border-color: #CBA58A;
+        background: #F5EADD;
+        box-shadow: 0 0 0 2px rgba(140, 90, 60, .14);
+      }
+
+      .catalog-mobile-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 14px 16px;
+        background: #F5EFEA;
+      }
+
+      .catalog-mobile-card-title {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: baseline;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .catalog-mobile-card-code {
+        flex: 0 0 auto;
+        color: #52796F;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+
+      .catalog-mobile-card-book-title {
+        display: -webkit-box;
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--ink);
+        font-size: 16px !important;
+        font-weight: 800;
+        line-height: 1.5;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+
+      .catalog-mobile-card-header [data-catalog-star] svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .catalog-mobile-card-details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .catalog-mobile-card-detail {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+        padding: 11px 16px;
+        border-top: 1px solid #E8E1D5;
+      }
+
+      .catalog-mobile-card-detail.is-missing,
+      .catalog-mobile-card-detail.is-note {
+        grid-column: 1 / -1;
+      }
+
+      .catalog-mobile-card-detail.is-tail {
+        border-right: 1px solid #E8E1D5;
+      }
+
+      .catalog-mobile-card-detail.is-note {
+        align-items: center;
+      }
+
+      .catalog-mobile-card-label {
+        flex: 0 0 auto;
+        color: #52796F;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .catalog-mobile-card-value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        color: var(--ink) !important;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .catalog-mobile-card-detail.is-note .catalog-mobile-card-value {
+        flex: 1 1 auto;
+      }
+
+      .catalog-mobile-edit-button {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        margin: -5px -7px -5px 2px;
+        border-radius: 8px;
+        color: #52796F;
+      }
+
+      .catalog-mobile-edit-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .catalog-mobile-card-value.is-missing-number {
+        color: #C94A29 !important;
+      }
+    }
+
     .book-form-add {
       padding: 18px !important;
       background: linear-gradient(145deg, #FCFAF6 0%, #F4F0E8 100%);
@@ -1520,7 +1785,7 @@
       box-shadow: 0 14px 30px rgba(66, 79, 70, .12);
     }
 
-    @media (min-width: 1024px) {
+    @media (min-width: 1280px) {
       .book-form-add #book-form {
         display: flex;
         flex-direction: column;
@@ -1921,7 +2186,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.63
+      圖書館系統 v4.1.65
     </div>
   </aside>
 
@@ -1973,7 +2238,7 @@
           
           <!-- 右上角學期選擇器 (僅在班際輪換頁面呈現) -->
           <div id="semester-selector-container" class="hidden flex items-center gap-1.5 bg-[#FFFDF9] border border-[#D8CEBE] rounded-xl pl-2 pr-3 py-1.5 shadow-sm hover:border-[#2C5E43] transition">
-            <button onclick="openSemesterManagerModal()" type="button" 
+            <button id="semester-manager-open-btn" onclick="openSemesterManagerModal()" type="button"
               class="p-1.5 text-[#8C5A3C] hover:text-[#2C5E43] hover:bg-[#EAF0EC] rounded-lg transition duration-200 flex items-center justify-center">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -2593,6 +2858,7 @@
     let isAdmin = false;
     let cloudReady = false;
     let cloudSemesterUnsubscribe = null;
+    let cloudCatalogUnsubscribe = null;
     let cloudSelectionUnsubscribe = null;
     let teacherPortalUnsubscribe = null;
     let adminTeacherPortalUnsubscribe = null;
@@ -2845,7 +3111,8 @@
         if (backupTooltip) backupTooltip.textContent = backupLabel;
       }
       const gear = document.getElementById('rotation-settings-gear-btn');
-      if (gear) gear.classList.toggle('hidden', !isAdmin || currentActiveTab !== 'rotation');
+      if (gear) gear.classList.toggle('hidden', !isAdmin || currentActiveTab !== 'rotation' || isHistoricalRotationSemester());
+      syncHistoricalRotationControls();
       syncAdminSavePopoverHost();
       updatePrintActionLabels();
       updateCloudSyncStatusUi();
@@ -3284,12 +3551,17 @@
       return firestoreDb.collection('semesters').doc(currentSemester);
     }
 
+    // 書香清冊不隨學期切換；所有學期共用同一份正式資料。
+    function getCatalogDocument() {
+      return firestoreDb.collection('system').doc('catalog');
+    }
+
     function getTeacherPortalDocument() {
       return firestoreDb.collection('teacherPortal').doc(currentSemester);
     }
 
-    function getTeacherBookDocument(bookCode) {
-      return firestoreDb.collection('teacherBooks').doc(`${currentSemester}_${String(bookCode).trim()}`);
+    function getTeacherBookDocument(bookCode, semesterId = currentSemester) {
+      return firestoreDb.collection('teacherBooks').doc(`${semesterId}_${String(bookCode).trim()}`);
     }
 
     function isBookBorrowable(book) {
@@ -3305,9 +3577,9 @@
         && book.inRotation !== false;
     }
 
-    function buildTeacherBookData(book) {
+    function buildTeacherBookData(book, semesterId = currentSemester) {
       return {
-        semesterId: currentSemester,
+        semesterId,
         code: String(book.code).trim(),
         title: sanitizeTitle(book.title),
         total: String(book.total ?? '').trim(),
@@ -3440,13 +3712,50 @@
       }
     }
 
+    // 從舊學期修改共用清冊時，只更新最新教師選書學期的書目；
+    // 不覆寫該學期的日期、班級或選書時段。
+    async function publishSharedCatalogToActiveTeacherSemester() {
+      const activeSemester = getTeacherSelectionSemesterId();
+      if (!activeSemester || activeSemester === currentSemester) return;
+      const existingTeacherBooks = await firestoreDb.collection('teacherBooks')
+        .where('semesterId', '==', activeSemester).get();
+      const batch = firestoreDb.batch();
+      const activeBookIds = new Set();
+      const existingBooksById = new Map();
+      existingTeacherBooks.forEach(doc => existingBooksById.set(doc.id, doc.data()));
+      let hasChanges = false;
+
+      booksData.forEach(book => {
+        if (!String(book.code || '').trim()) return;
+        const ref = getTeacherBookDocument(book.code, activeSemester);
+        activeBookIds.add(ref.id);
+        const nextBook = buildTeacherBookData(book, activeSemester);
+        const previousBook = existingBooksById.get(ref.id);
+        const bookChanged = !previousBook || ['semesterId', 'code', 'title', 'total', 'available']
+          .some(key => String(previousBook[key] ?? '') !== String(nextBook[key] ?? ''));
+        if (bookChanged) {
+          batch.set(ref, nextBook, { merge: true });
+          hasChanges = true;
+        }
+      });
+      existingTeacherBooks.forEach(doc => {
+        if (!activeBookIds.has(doc.id)) {
+          batch.delete(doc.ref);
+          hasChanges = true;
+        }
+      });
+      if (hasChanges) {
+        await batch.commit();
+        await firestoreDb.waitForPendingWrites();
+      }
+    }
+
     function queueCloudSemesterSave() {
       markAdminChangesUnsaved();
     }
 
     function buildCurrentSemesterSavePayload() {
       return {
-        booksData: JSON.parse(JSON.stringify(booksData)),
         gradeCounts: { ...gradeCounts },
         rotationDates: { ...rotationDates },
         rotationSchedule: JSON.parse(JSON.stringify(rotationSchedule)),
@@ -3460,13 +3769,27 @@
       setCloudSyncStatus('syncing');
       const waitingTimer = setTimeout(() => setCloudSyncStatus('waiting'), 5000);
       try {
-        await getSemesterDocument().set({
-          ...payload,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedBy: currentUser.uid
-        }, { merge: true });
+        await Promise.all([
+          getSemesterDocument().set({
+            ...payload,
+            // 清除舊版按學期儲存的清冊，避免往後誤被當成正式來源。
+            booksData: firebase.firestore.FieldValue.delete(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: currentUser.uid
+          }, { merge: true }),
+          // 第一次確認儲存時，以目前學期畫面上的清冊建立共用正式資料。
+          getCatalogDocument().set({
+            booksData: JSON.parse(JSON.stringify(booksData)),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: currentUser.uid
+          }, { merge: true })
+        ]);
         await firestoreDb.waitForPendingWrites();
-        await publishTeacherSelectionData(selectionWindowOverride);
+        if (currentSemester === getTeacherSelectionSemesterId()) {
+          await publishTeacherSelectionData(selectionWindowOverride);
+        } else {
+          await publishSharedCatalogToActiveTeacherSemester();
+        }
         hasUnsavedAdminChanges = false;
         if (pendingCloudSemesterSaves === 1) setCloudSyncStatus('saved');
       } catch (error) {
@@ -3544,8 +3867,9 @@
       if (button?.disabled) return;
       if (button) { button.disabled = true; button.classList.add('opacity-50', 'animate-pulse'); }
       try {
-        const [systemSettings, portalSettings, semesters, teacherPortal, teacherBooks, selections, classPeriodSelections, classBookSelections] = await Promise.all([
+        const [systemSettings, catalog, portalSettings, semesters, teacherPortal, teacherBooks, selections, classPeriodSelections, classBookSelections] = await Promise.all([
           firestoreDb.collection('system').doc('settings').get(),
+          getCatalogDocument().get(),
           firestoreDb.collection('teacherPortal').doc('settings').get(),
           firestoreDb.collection('semesters').get(),
           firestoreDb.collection('teacherPortal').get(),
@@ -3559,6 +3883,7 @@
           exportedAt: new Date().toISOString(),
           projectId: firebaseConfig.projectId,
           systemSettings: systemSettings.exists ? serializeCloudBackupValue(systemSettings.data()) : null,
+          catalog: catalog.exists ? serializeCloudBackupValue(catalog.data()) : null,
           teacherPortalSettings: portalSettings.exists ? serializeCloudBackupValue(portalSettings.data()) : null,
           semesters: serializeCloudBackupDocuments(semesters),
           teacherPortal: serializeCloudBackupDocuments(teacherPortal),
@@ -3625,12 +3950,10 @@
         if (hasUnsavedAdminChanges) return;
         if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
         const data = snapshot.data();
-        booksData = Array.isArray(data.booksData) ? data.booksData : booksData;
         gradeCounts = data.gradeCounts || gradeCounts;
         rotationDates = data.rotationDates || rotationDates;
         rotationSchedule = data.rotationSchedule || rotationSchedule;
         grade8HistoryBooks = data.grade8HistoryBooks || grade8HistoryBooks;
-        localStorage.setItem(getCatalogKey(), JSON.stringify(booksData));
         localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
         localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
         localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
@@ -3669,6 +3992,22 @@
         setTeacherSelectionWindowSaveBusy(false);
         setTeacherSelectionWindowSaveMessage('無法讀取雲端開放時段，請確認網路後重新登入。');
         console.error('讀取管理員教師選書時段失敗：', error);
+      });
+    }
+
+    function bindCatalogCloudListener() {
+      if (cloudCatalogUnsubscribe) cloudCatalogUnsubscribe();
+      cloudCatalogUnsubscribe = getCatalogDocument().onSnapshot(snapshot => {
+        // 舊版正式資料尚未轉換前，保留目前畫面清冊，等待管理員首次確認儲存。
+        if (!snapshot.exists || hasUnsavedAdminChanges) return;
+        const data = snapshot.data();
+        if (!Array.isArray(data.booksData)) return;
+        booksData = data.booksData;
+        localStorage.setItem(getCatalogKey(), JSON.stringify(booksData));
+        renderAllViews();
+      }, error => {
+        setCloudSyncStatus('failed');
+        console.error('讀取共用書香清冊失敗：', error);
       });
     }
 
@@ -3769,6 +4108,7 @@
           console.warn('找不到學期設定；請確認正式資料後再以管理操作建立或儲存。');
           return;
         }
+        bindCatalogCloudListener();
         bindSemesterCloudListener();
         renderAllViews();
       }, error => console.error('讀取系統設定失敗：', error));
@@ -3777,12 +4117,14 @@
     async function applyAuthState(user) {
       if (user && activeAuthUid === user.uid) return;
       if (cloudSemesterUnsubscribe) cloudSemesterUnsubscribe();
+      if (cloudCatalogUnsubscribe) cloudCatalogUnsubscribe();
       if (cloudSelectionUnsubscribe) cloudSelectionUnsubscribe();
       if (teacherPortalUnsubscribe) teacherPortalUnsubscribe();
       if (teacherBooksUnsubscribe) teacherBooksUnsubscribe();
       if (teacherSettingsUnsubscribe) teacherSettingsUnsubscribe();
       if (adminTeacherPortalUnsubscribe) adminTeacherPortalUnsubscribe();
       cloudSemesterUnsubscribe = null;
+      cloudCatalogUnsubscribe = null;
       cloudSelectionUnsubscribe = null;
       teacherPortalUnsubscribe = null;
       teacherBooksUnsubscribe = null;
@@ -4022,7 +4364,9 @@
     // LocalStorage 只保留短暫快取；所有正式資料都以 Firestore 為準。
     function getStorageNamespace() { return 'wujia_'; }
     function getSemestersKey() { return `${getStorageNamespace()}semesters_list_v32`; }
-    function getCatalogKey() { return `${getStorageNamespace()}book_trunks_${currentSemester}_v32`; }
+    function getCatalogKey() { return `${getStorageNamespace()}book_trunks_shared_v33`; }
+    // 僅供首次轉換讀取舊版各學期快取，絕不再寫入。
+    function getLegacyCatalogKey() { return `${getStorageNamespace()}book_trunks_${currentSemester}_v32`; }
     function getRotationKey() { return `${getStorageNamespace()}rotation_schedule_${currentSemester}_v32`; }
     function getDatesKey() { return `${getStorageNamespace()}rotation_dates_${currentSemester}_v32`; }
     function getGradeCountsKey() { return `${getStorageNamespace()}grade_class_counts_${currentSemester}_v32`; }
@@ -4075,6 +4419,7 @@
 
     // 開啟學期管理視窗
     function openSemesterManagerModal() {
+      if (!requireAdmin()) return;
       renderSemesterManagerList();
       const yearInput = document.getElementById('new-semester-year');
       const termInput = document.getElementById('new-semester-term');
@@ -4139,6 +4484,10 @@
     function deleteSemester(semId, event) {
       if (!requireAdmin()) return;
       if (event) event.stopPropagation();
+      if (isHistoricalRotationSemester()) {
+        alert('過往學期的班際輪換為唯讀資料；請切換至最新學期後再管理學期。');
+        return;
+      }
 
       if (semesterList.length <= 1) {
         alert('⚠️ 系統中至少必須保留一個學期！');
@@ -4171,6 +4520,10 @@
     // 新增學期
     function addNewSemester() {
       if (!requireAdmin()) return;
+      if (isHistoricalRotationSemester()) {
+        alert('過往學期的班際輪換為唯讀資料；請切換至最新學期後再管理學期。');
+        return;
+      }
       const yearEl = document.getElementById('new-semester-year');
       const termEl = document.getElementById('new-semester-term');
       if (!yearEl || !termEl) return;
@@ -4337,25 +4690,64 @@
       if (inlineEditingSlot) {
         commitInlineCell();
       }
+      const shouldReopenCatalogEditor = resetCatalogEditorForSemesterSwitch();
       currentSemester = newSem;
+      if (isHistoricalRotationSemester()) {
+        closeCombinedSettingsModal();
+        closeSemesterManagerModal();
+      }
       loadAllData();
       renderSemesterSelectOptions();
       switchGrade('7');
       renderTable();
+      if (shouldReopenCatalogEditor) openFreshCatalogFormAfterSemesterSwitch();
       renderRotationTable();
       if (cloudReady) bindSemesterCloudListener();
       renderSelectionView();
     }
 
-    // 讀取當前學期獨立 LocalStorage
+    // 學期排程彼此獨立；切換前不可保留前一學期的編輯表單或桌機對齊高度。
+    function resetCatalogEditorForSemesterSwitch() {
+      selectedBookId = null;
+      const formCard = document.getElementById('form-card');
+      const form = document.getElementById('book-form');
+      const wasOpen = Boolean(formCard && !formCard.classList.contains('hidden'));
+      if (form) form.reset();
+      document.getElementById('inputId').value = '';
+      if (!formCard) return false;
+      formCard.style.height = '';
+      formCard.classList.add('hidden');
+      restoreCatalogFormToColumn();
+      return wasOpen;
+    }
+
+    // 等同按一次「新增書箱」，但不搶走焦點或開啟行動裝置鍵盤。
+    function openFreshCatalogFormAfterSemesterSwitch() {
+      const formCard = document.getElementById('form-card');
+      formCard.className = 'book-form-add p-6 rounded-2xl';
+      formCard.style.height = '';
+      document.getElementById('book-form').reset();
+      document.getElementById('inputId').value = '';
+      document.getElementById('delete-btn').classList.add('hidden');
+      renderTable();
+    }
+
+    // 清冊為共用快取；其他設定仍依目前學期讀取。
     function loadAllData() {
       const storedCatalog = localStorage.getItem(getCatalogKey());
       if (storedCatalog) {
         try { booksData = JSON.parse(storedCatalog); } 
         catch (e) { booksData = JSON.parse(JSON.stringify(INITIAL_BOOKS)); }
       } else {
-        booksData = JSON.parse(JSON.stringify(INITIAL_BOOKS));
-        saveCatalogToStorage();
+        // 升級前尚未建立共用清冊時，先顯示目前學期的舊快取；
+        // 只有管理員按確認儲存時才會寫入正式共用資料。
+        const legacyCatalog = localStorage.getItem(getLegacyCatalogKey());
+        if (legacyCatalog) {
+          try { booksData = JSON.parse(legacyCatalog); }
+          catch (e) { booksData = JSON.parse(JSON.stringify(INITIAL_BOOKS)); }
+        } else {
+          booksData = JSON.parse(JSON.stringify(INITIAL_BOOKS));
+        }
       }
 
       const storedCounts = localStorage.getItem(getGradeCountsKey());
@@ -4400,6 +4792,7 @@
     }
 
     function saveCatalogToStorage() {
+      localStorage.setItem(getCatalogKey(), JSON.stringify(booksData));
       queueCloudSemesterSave();
     }
 
@@ -4858,7 +5251,9 @@
     // 左側側邊欄 頁籤切換邏輯
     function switchTab(tabName) {
       if (!isAdmin && tabName !== 'selection') tabName = 'selection';
-      if (tabName === 'selection' && isAdmin) {
+      const leavingHistoricalRotation = currentActiveTab === 'rotation'
+        && tabName !== 'rotation' && isHistoricalRotationSemester();
+      if (isAdmin && (tabName === 'selection' || leavingHistoricalRotation)) {
         const latestSemester = getLatestSemester();
         if (latestSemester && currentSemester !== latestSemester.id) switchSemester(latestSemester.id);
       }
@@ -4933,6 +5328,22 @@
       });
     }
 
+    // 學期清單依建立順序排列；最新一個學期可安排或清除，其他皆為保留中的歷史輪換。
+    function isHistoricalRotationSemester(semesterId = currentSemester) {
+      const semesterIndex = semesterList.findIndex(semester => semester.id === semesterId);
+      return semesterIndex !== -1 && semesterIndex < semesterList.length - 1;
+    }
+
+    // 歷史輪換僅供查閱與列印；保留學期管理入口，但隱藏輪換資料的修改入口。
+    function syncHistoricalRotationControls() {
+      if (!isAdmin || currentActiveTab !== 'rotation') return;
+      const isHistoricalView = isHistoricalRotationSemester();
+      document.getElementById('rotation-action-buttons')?.classList.toggle('is-readonly', isHistoricalView);
+      document.getElementById('semester-manager-open-btn')?.classList.remove('hidden');
+      ['btn-random-distribute', 'btn-clear-grade', 'rotation-settings-gear-btn']
+        .forEach(id => document.getElementById(id)?.classList.toggle('hidden', isHistoricalView));
+    }
+
     document.querySelectorAll('#combined-settings-content input[type="date"]').forEach(input => {
       input.addEventListener('input', refreshIosDateDisplays);
       input.addEventListener('change', refreshIosDateDisplays);
@@ -4940,6 +5351,10 @@
 
     function openCombinedSettingsModal() {
       if (!requireAdmin()) return;
+      if (isHistoricalRotationSemester()) {
+        alert('過往學期的班際輪換為唯讀資料，不能修改設定。');
+        return;
+      }
       const g7Input = document.getElementById('combined-g7-count');
       const g8Input = document.getElementById('combined-g8-count');
       if (g7Input) g7Input.value = gradeCounts.g7 || 10;
@@ -4971,6 +5386,11 @@
 
     function saveCombinedSettings() {
       if (!requireAdmin()) return;
+      if (isHistoricalRotationSemester()) {
+        closeCombinedSettingsModal();
+        alert('過往學期的班際輪換為唯讀資料，不能修改設定。');
+        return;
+      }
       const g7Val = parseInt(fullToHalfNumbers(document.getElementById('combined-g7-count').value).trim(), 10);
       const g8Val = parseInt(fullToHalfNumbers(document.getElementById('combined-g8-count').value).trim(), 10);
 
@@ -5108,7 +5528,7 @@
     function renderMobileCatalogCards() {
       const mobileCards = document.getElementById('catalog-mobile-cards');
       if (!mobileCards) return;
-      const useMobileCatalogCards = isAdmin && window.matchMedia('(max-width: 760px)').matches;
+      const useMobileCatalogCards = isAdmin && window.matchMedia('(max-width: 1279px)').matches;
       restoreCatalogFormToColumn();
       mobileCards.classList.toggle('hidden', !useMobileCatalogCards);
       mobileCards.classList.remove('has-editor');
@@ -5176,7 +5596,7 @@
     function placeCatalogFormForMobile(bookId = selectedBookId) {
       const formCard = document.getElementById('form-card');
       const mobileCards = document.getElementById('catalog-mobile-cards');
-      if (!formCard || !mobileCards || !window.matchMedia('(max-width: 760px)').matches) {
+      if (!formCard || !mobileCards || !window.matchMedia('(max-width: 1279px)').matches) {
         restoreCatalogFormToColumn();
         return;
       }
@@ -5193,7 +5613,8 @@
 
       if (!formCard || !tbody) return;
 
-      if (window.innerWidth < 1024 || formCard.classList.contains('hidden')) {
+      // 新增表單必須依內容自然撐高；只有桌機正在編輯既有書箱時才對齊清冊列高。
+      if (window.innerWidth < 1280 || selectedBookId === null || formCard.classList.contains('hidden')) {
         formCard.style.height = '';
         return;
       }
@@ -5450,7 +5871,8 @@
           btn.className = "px-6 py-2.5 rounded-xl font-semibold text-base lg:text-lg transition-all duration-200 bg-white text-[#2C5E43] border border-gray-200 hover:bg-[#F5EFEA] shadow-sm";
         }
       });
-      recomputeChainFlow(currentGrade);
+      // 歷史學期只變更查閱的年級，不重新計算或改寫既有輪換動線。
+      if (!isHistoricalRotationSemester()) recomputeChainFlow(currentGrade);
       renderRotationTable();
     }
 
@@ -5978,12 +6400,15 @@
     // 渲染螢幕畫面儲存格內容（維持雙行移交說明卡片，全無外框線，置中對齊）
     function renderSlotCellContentExactFormat(className, slotKey, slotInfo, classIndex) {
       const isG7P1 = isG7P1LibraryOrientation(className, slotKey);
+      const isHistoricalSemester = isHistoricalRotationSemester();
+      const slotActivation = isHistoricalSemester ? '' : `onclick="activateInlineCell('${className}', '${slotKey}', event)"`;
+      const slotInteraction = isHistoricalSemester ? '' : 'cursor-pointer hover:bg-[#F8EADD]';
 
       if (!slotInfo || !slotInfo.code) {
         if (isG7P1) {
           // 七年級首時段預設活動：僅簡潔顯示「參觀圖書館＆新生齊步走」，不加「來自【圖書館】」與提示說明
-          return `<div onclick="activateInlineCell('${className}', '${slotKey}', event)" 
-          class="bg-[#FCF4EC] p-3 rounded-xl cursor-pointer border-none shadow-none hover:bg-[#F8EADD] transition flex items-center justify-center min-h-[58px]">
+          return `<div ${slotActivation}
+          class="bg-[#FCF4EC] p-3 rounded-xl ${slotInteraction} border-none shadow-none transition flex items-center justify-center min-h-[58px]">
               <div class="font-bold text-[#2C5E43] text-sm lg:text-base leading-snug text-center">
                 參觀圖書館＆新生齊步走
               </div>
@@ -5991,30 +6416,33 @@
         }
 
         // 尚未建立任何書箱時，維持完全空白，不增加「未分配」或提示說明
-        return `<div onclick="activateInlineCell('${className}', '${slotKey}', event)" 
-          class="p-3 rounded-xl cursor-pointer border-none shadow-none hover:bg-[#F5EFEA]/50 transition min-h-[58px]">
+        return `<div ${slotActivation}
+          class="p-3 rounded-xl ${isHistoricalSemester ? '' : 'cursor-pointer hover:bg-[#F5EFEA]/50'} border-none shadow-none transition min-h-[58px]">
           </div>`;
       }
 
       const book = getBookByCode(slotInfo.code);
       const title = book ? sanitizeTitle(book.title) : `書號無效，請重新指定（${slotInfo.code}）`;
       
-      // 來源底色採柔和低彩度色：手動指定為淡粉、教師選書匯入為淡藍、系統隨機分派為淡綠。
+      // 已建立後續學期的舊排程一律以淡橘色顯示，並受清除按鈕保護。
+      // 最新學期仍依來源區分：手動指定為淡粉、教師選書匯入為淡藍、系統隨機分派為淡綠。
       const isSpecified = slotInfo.manualSpecified === true;
       const isTeacherSelection = slotInfo.selectionSource === 'teacher';
-      const cardBg = isSpecified
-        ? 'bg-[#FDF1F2] hover:bg-[#FAE3E6]'
-        : isTeacherSelection
-          ? 'bg-[#EEF7FC] hover:bg-[#DDEFF8]'
-          : 'bg-[#EEF7F0] hover:bg-[#DCEFE1]';
+      const cardBg = isHistoricalSemester
+        ? 'bg-[#FCF1E5]'
+        : isSpecified
+          ? 'bg-[#FDF1F2] hover:bg-[#FAE3E6]'
+          : isTeacherSelection
+            ? 'bg-[#EEF7FC] hover:bg-[#DDEFF8]'
+            : 'bg-[#EEF7F0] hover:bg-[#DCEFE1]';
       
       const fromPlace = slotInfo.fromPlace || "圖書館";
       const toPlace = slotInfo.toPlace || "圖書館";
       const dueDate = slotInfo.dueDate || "未定";
 
       // 螢幕畫面呈現雙行移交說明卡片（置中對齊）
-      return `<div onclick="activateInlineCell('${className}', '${slotKey}', event)" 
-        class="${cardBg} p-3 rounded-xl transition cursor-pointer flex flex-col justify-center items-center text-center border-none shadow-none space-y-1">
+      return `<div ${slotActivation}
+        class="${cardBg} p-3 rounded-xl transition ${isHistoricalSemester ? '' : 'cursor-pointer'} flex flex-col justify-center items-center text-center border-none shadow-none space-y-1">
           <div class="font-bold text-sm lg:text-base text-[#2C3E35] leading-snug text-center w-full">
             來自<span class="text-[#8C5A3C] font-extrabold px-1">【${fromPlace}】</span>的《${title}》
           </div>
@@ -6058,6 +6486,7 @@
     // 渲染滿版螢幕輪換表格 (欄位: 【班級 12%】 ➔ 【第一本 29.3%】 ➔ 【第二本 29.3%】 ➔ 【第三本 29.3%】)
     function renderRotationTable() {
       inlineEditingSlot = null;
+      syncHistoricalRotationControls();
 
       const classes = getClassesForGrade(currentGrade);
       const mobileCards = document.getElementById('rotation-mobile-cards');
@@ -6409,6 +6838,7 @@
 
     function activateInlineCell(className, slotKey, event) {
       if (event) event.stopPropagation();
+      if (isHistoricalRotationSemester()) return;
 
       if (inlineEditingSlot && inlineEditingSlot.className === className && inlineEditingSlot.slotKey === slotKey) {
         return;
@@ -6479,6 +6909,10 @@
     function commitInlineCell(fromBlur = false) {
       if (isInlineAlertShowing) return;
       if (!requireAdmin()) return;
+      if (isHistoricalRotationSemester()) {
+        cancelInlineCell();
+        return;
+      }
       if (!inlineEditingSlot) return;
       const { className, slotKey } = inlineEditingSlot;
       const hasInputChanged = inlineEditingSlot.hasInputChanged === true;
@@ -6589,6 +7023,11 @@
     // 清除七年級與八年級的自動安排，保留管理員手動指定與教師來源指定的書籍。
     function clearCurrentGradeSchedule() {
       if (!requireAdmin()) return;
+      if (isHistoricalRotationSemester()) {
+        const semesterName = semesterList.find(semester => semester.id === currentSemester)?.name || currentSemester;
+        alert(`「${semesterName}」是保留中的過往學期；淡橘色輪換書籍不會被清除。`);
+        return;
+      }
       const preservedManualSelections = {};
       Object.entries(rotationSchedule).forEach(([className, schedule]) => {
         ['p1', 'p2', 'p3'].forEach(slotKey => {
@@ -6657,6 +7096,11 @@
     // 一鍵建置動線與智慧隨機分配 (完全保留教師指定欄位，七八年級跨年級聯合演算補齊全時段空白儲存格，並一鍵生成移交流轉動線)
     function autoDistributeCurrentGrade() {
       if (!requireAdmin()) return;
+      if (isHistoricalRotationSemester()) {
+        const semesterName = semesterList.find(semester => semester.id === currentSemester)?.name || currentSemester;
+        alert(`「${semesterName}」是保留中的過往學期；淡橘色輪換書籍不會重新隨機排列。`);
+        return;
+      }
       const allBooks = booksData.filter(isBookEligibleForRotation);
 
       if (allBooks.length === 0) {

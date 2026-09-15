@@ -101,6 +101,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // 全學期共用的書香清冊；教師仍只能經由 teacherBooks 取得可選書目。
+    match /system/catalog {
+      allow read, write: if isAdmin();
+    }
+
     // 管理者完整資料與教師選書資料分離，教師無法讀取清冊、輪換與班級設定。
     match /teacherPortal/{portalId} {
       allow read: if signedIn() && (isAdmin() || portalId == 'settings' || isActiveTeacherSemester(portalId));
