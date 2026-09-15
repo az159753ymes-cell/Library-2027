@@ -6,17 +6,19 @@ $nodePath = $nodeCommand.Source
 $serverScript = Join-Path $PSScriptRoot 'local-preview-server.js'
 $chromePath = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 $siteUrl = 'http://localhost:4173/'
+$healthUrl = 'http://127.0.0.1:4173/'
 
 try {
-  Invoke-WebRequest -UseBasicParsing $siteUrl -TimeoutSec 1 | Out-Null
+  Invoke-WebRequest -UseBasicParsing $healthUrl -TimeoutSec 1 | Out-Null
 } catch {
-  Start-Process -FilePath $nodePath -ArgumentList @($serverScript, '4173') -WorkingDirectory $projectRoot -WindowStyle Hidden
+  # Quote the script path because Start-Process joins arguments into one command line.
+  Start-Process -FilePath $nodePath -ArgumentList ('"{0}" 4173' -f $serverScript) -WorkingDirectory $projectRoot -WindowStyle Hidden
 
   $isReady = $false
   for ($attempt = 1; $attempt -le 40; $attempt++) {
     Start-Sleep -Milliseconds 250
     try {
-      Invoke-WebRequest -UseBasicParsing $siteUrl -TimeoutSec 1 | Out-Null
+      Invoke-WebRequest -UseBasicParsing $healthUrl -TimeoutSec 1 | Out-Null
       $isReady = $true
       break
     } catch {
