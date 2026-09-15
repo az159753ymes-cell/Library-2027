@@ -3838,10 +3838,7 @@
             updatedBy: currentUser.uid
           }, { merge: true });
         await firestoreDb.waitForPendingWrites();
-        const confirmedCatalog = await getCatalogDocument().get({ source: 'server' });
-        if (!confirmedCatalog.exists || catalogSignature(confirmedCatalog.data().booksData) !== catalogSignature(nextBooks)) {
-          throw new Error('正式清冊寫入後未能從伺服器確認。');
-        }
+        await confirmCatalogOnServer(nextBooks);
         catalogServerBooks = JSON.parse(JSON.stringify(nextBooks));
         catalogDocumentMissing = false;
         if (currentSemester === getTeacherSelectionSemesterId()) {
@@ -4082,6 +4079,21 @@
       return JSON.stringify((items || []).map(book => Object.fromEntries(
         Object.keys(book).sort().map(key => [key, book[key]])
       )).sort((a, b) => String(a.code).localeCompare(String(b.code), 'zh-TW', { numeric: true })));
+    }
+
+    async function confirmCatalogOnServer(expectedBooks, attempts = 3) {
+      const expectedSignature = catalogSignature(expectedBooks);
+      let snapshot = null;
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        snapshot = await getCatalogDocument().get({ source: 'server' });
+        if (snapshot.exists && catalogSignature(snapshot.data()?.booksData) === expectedSignature) return snapshot;
+        // 交易完成後仍以伺服器資料為準；短暫的讀回延遲不應被誤報為儲存失敗。
+        if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+      }
+      const error = new Error('正式清冊在寫入後仍與伺服器資料不一致。可能有其他裝置同時修改；本機修改已保留，請先比對。');
+      error.code = 'catalog-conflict';
+      error.serverSnapshot = snapshot;
+      throw error;
     }
 
     function renderCatalogSource() {
