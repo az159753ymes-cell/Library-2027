@@ -2992,14 +2992,42 @@
       return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decodeFirestoreRestValue(value)]));
     }
 
+    function promiseWithTimeout(promise, timeoutMs, message) {
+      let timer = null;
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      });
+      return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+    }
+
     async function fetchSemesterFromFirestoreRest(semesterId) {
-      const token = await currentUser?.getIdToken();
+      const token = await promiseWithTimeout(
+        currentUser?.getIdToken(true),
+        5000,
+        '更新登入權杖超過 5 秒。'
+      );
       if (!token) throw new Error('找不到目前登入的 Firebase 身分。');
-      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/semesters/${encodeURIComponent(semesterId)}`;
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) throw new Error(`Firestore REST 讀取失敗（HTTP ${response.status}）。`);
-      const document = await response.json();
-      return decodeFirestoreRestFields(document.fields || {});
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/semesters/${encodeURIComponent(semesterId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}`;
+      const controller = new AbortController();
+      const abortTimer = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          const detail = String(body?.error?.message || '').trim();
+          throw new Error(`Firestore REST 讀取失敗（HTTP ${response.status}${detail ? `：${detail}` : ''}）。`);
+        }
+        const document = await response.json();
+        return decodeFirestoreRestFields(document.fields || {});
+      } catch (error) {
+        if (error?.name === 'AbortError') throw new Error('Firestore HTTPS 讀取超過 8 秒。');
+        throw error;
+      } finally {
+        clearTimeout(abortTimer);
+      }
     }
 
     function markAdminChangesUnsaved() {
@@ -3677,10 +3705,12 @@
       setAdminCloudDataLoaded(false);
       setCloudSyncStatus('waiting');
       let restFallbackTimer = null;
+      const loadErrors = [];
       const loadTimeout = setTimeout(() => {
         if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
         setCloudSyncStatus('failed');
-        setAdminCloudDataLoaded(false, '讀取正式資料超過 15 秒，尚未取得伺服器確認。請重新整理後登入；完成前不能修改或儲存。');
+        const detail = loadErrors.length ? ` 原因：${loadErrors.join('；')}` : '';
+        setAdminCloudDataLoaded(false, `讀取正式資料超過 15 秒，尚未取得伺服器確認。${detail} 完成前不能修改或儲存。`);
       }, 15000);
 
       const applyServerSnapshot = snapshot => {
@@ -3720,6 +3750,8 @@
 
       const noteSdkLoadError = error => {
         if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
+        const detail = String(error?.code || error?.message || '未知錯誤');
+        if (!loadErrors.includes(`即時連線：${detail}`)) loadErrors.push(`即時連線：${detail}`);
         setAdminCloudDataLoaded(false, 'Firestore 即時連線暫時失敗，正在改用安全備援讀取正式資料；完成前不能修改或儲存。');
         console.warn('Firestore 即時讀取失敗，將嘗試 REST 備援：', error);
       };
@@ -3744,6 +3776,9 @@
           const data = await fetchSemesterFromFirestoreRest(semesterId);
           applyServerData(data);
         } catch (error) {
+          const detail = String(error?.message || error || '未知錯誤');
+          loadErrors.push(`HTTPS 備援：${detail}`);
+          setAdminCloudDataLoaded(false, `HTTPS 備援讀取失敗：${detail} 正在等待最後一次即時連線；完成前不能修改或儲存。`);
           console.error('Firestore REST 備援讀取失敗：', error);
         }
       }, 3000);
