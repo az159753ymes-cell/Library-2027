@@ -1943,6 +1943,9 @@
   <!-- 右側主內容工作區 (Main Content Area, 左留邊 margin-left: 240px) -->
   <main id="app-main" class="hidden library-main flex-1 min-h-screen p-8 lg:p-10">
     <div class="max-w-[1920px] mx-auto">
+      <section id="admin-cloud-loading-banner" class="hidden mb-5 rounded-2xl border border-[#D8CEBE] bg-[#FFF8E8] px-5 py-4 text-[#7A5B22] shadow-sm" role="status" aria-live="polite">
+        正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。
+      </section>
       
       <!-- 右側頂部列：當前頁面名稱與【右上角學期選擇器】＋ 操作按鈕 -->
       <div class="app-page-header flex items-center justify-between mb-8 pb-2 no-print">
@@ -2592,6 +2595,9 @@
     let authErrorMessage = '';
     let isAdmin = false;
     let cloudReady = false;
+    // 管理員必須收到 Firestore 的伺服器快照後，才能操作正式資料。
+    // 這可避免新電腦先顯示 localStorage／預設排程時被誤當成正式內容。
+    let adminCloudDataLoaded = false;
     let cloudSemesterUnsubscribe = null;
     let cloudSelectionUnsubscribe = null;
     let teacherPortalUnsubscribe = null;
@@ -2691,9 +2697,15 @@
     }
 
     function requireAdmin() {
-      if (isAdmin) return true;
-      alert('此功能僅限系統管理者使用。');
-      return false;
+      if (!isAdmin) {
+        alert('此功能僅限系統管理者使用。');
+        return false;
+      }
+      if (!adminCloudDataLoaded) {
+        alert('正式資料仍在讀取中，或目前無法連線至 Firestore。請等待資料讀取完成後再修改。');
+        return false;
+      }
+      return true;
     }
 
     async function signInWithGoogle() {
@@ -2940,6 +2952,14 @@
     function setCloudSyncStatus(status) {
       cloudSyncStatus = status;
       updateCloudSyncStatusUi();
+    }
+
+    function setAdminCloudDataLoaded(loaded, message = '') {
+      adminCloudDataLoaded = loaded;
+      const banner = document.getElementById('admin-cloud-loading-banner');
+      if (!banner) return;
+      banner.classList.toggle('hidden', loaded || !isAdmin);
+      banner.textContent = message || '正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。';
     }
 
     function markAdminChangesUnsaved() {
@@ -3612,10 +3632,17 @@
 
     function bindSemesterCloudListener() {
       if (cloudSemesterUnsubscribe) cloudSemesterUnsubscribe();
-      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot(snapshot => {
+      setAdminCloudDataLoaded(false);
+      setCloudSyncStatus('waiting');
+      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
+        if (snapshot.metadata.fromCache && !adminCloudDataLoaded) {
+          setAdminCloudDataLoaded(false, '正在連線並驗證正式 Firestore 資料，請稍候；目前顯示的暫存內容不可修改或儲存。');
+          return;
+        }
         if (!snapshot.exists) {
           // 正式資料不存在時不可用瀏覽器快取自動建立，避免舊資料覆寫剛完成的發布或還原。
           setCloudSyncStatus('waiting');
+          setAdminCloudDataLoaded(false, '找不到目前學期的正式資料，為避免覆寫資料，已禁止修改與儲存。');
           console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
           return;
         }
@@ -3637,10 +3664,12 @@
         localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
         recomputeChainFlow('7');
         recomputeChainFlow('8');
+        setAdminCloudDataLoaded(true);
         if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
         renderAllViews();
       }, error => {
         setCloudSyncStatus('failed');
+        setAdminCloudDataLoaded(false, '無法讀取正式 Firestore 資料，為避免覆寫資料，已禁止修改與儲存。請確認網路後重新登入。');
         console.error('讀取學期資料失敗：', error);
       });
 
@@ -3791,6 +3820,7 @@
       clearTeacherSelectionWindowLoadTimer();
       teacherListenersSemesterId = '';
       cloudReady = false;
+      adminCloudDataLoaded = false;
       teacherSelectionWindowLoaded = false;
       teacherSelectionWindowLoadError = '';
       currentUser = user;
