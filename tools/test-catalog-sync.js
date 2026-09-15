@@ -64,6 +64,22 @@ async function run() {
   assert.equal(app.run('booksData.some(book => book.code === "999")'), true, 'default merge keeps local-only book');
   assert.equal(app.run('hasUnsavedAdminChanges'), true);
 
+  const cleanCache = createApp();
+  cleanCache.sandbox.old = old;
+  cleanCache.sandbox.local = local;
+  cleanCache.run('booksData = old; catalogLocalBooks = old; catalogHasLocalCache = true; catalogAcceptedSignature = catalogSignature(old);');
+  cleanCache.run('applyCloudCatalogSnapshot({ exists: true, metadata: { fromCache: false }, data: () => ({ booksData: local }) });');
+  assert.equal(cleanCache.run('catalogLoadState'), 'ready');
+  assert.equal(cleanCache.run('booksData.some(book => book.code === "999")'), true, 'clean cache follows newer server data');
+  const unsavedDraft = createApp();
+  unsavedDraft.sandbox.old = old;
+  unsavedDraft.sandbox.local = local;
+  unsavedDraft.run('booksData = local; catalogLocalBooks = local; catalogHasLocalCache = true; catalogAcceptedSignature = catalogSignature(old); hasUnsavedAdminChanges = false;');
+  unsavedDraft.run('applyCloudCatalogSnapshot({ exists: true, metadata: { fromCache: false }, data: () => ({ booksData: old }) });');
+  assert.equal(unsavedDraft.run('catalogLoadState'), 'ready');
+  assert.equal(unsavedDraft.run('booksData.some(book => book.code === "999")'), true, 'server echo cannot discard draft');
+  assert.equal(unsavedDraft.run('hasUnsavedAdminChanges'), true, 'reload must restore unsaved flag from baseline');
+
   const incognito = createApp();
   incognito.sandbox.old = old;
   incognito.run('booksData = INITIAL_BOOKS; catalogLocalBooks = booksData; catalogHasLocalCache = false;');

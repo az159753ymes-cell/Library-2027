@@ -2200,7 +2200,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.68
+      圖書館系統 v4.1.69
     </div>
   </aside>
 
@@ -2900,6 +2900,7 @@
     let catalogServerUpdatedAt = '';
     let catalogLocalBooks = null;
     let catalogHasLocalCache = false;
+    let catalogAcceptedSignature = '';
     let catalogDocumentMissing = false;
     let adminSettingsLoadState = 'loading';
     let catalogMergeChoices = new Map();
@@ -3867,6 +3868,8 @@
         catalogLocalBooks = JSON.parse(JSON.stringify(nextBooks));
         catalogHasLocalCache = true;
         localStorage.setItem(getCatalogKey(), JSON.stringify(nextBooks));
+        catalogAcceptedSignature = catalogSignature(nextBooks);
+        localStorage.setItem(getCatalogBaselineKey(), catalogAcceptedSignature);
         hasUnsavedAdminChanges = false;
         catalogLoadState = 'ready';
         renderCatalogSource();
@@ -4153,6 +4156,8 @@
       booksData = merged;
       catalogLocalBooks = JSON.parse(JSON.stringify(merged));
       localStorage.setItem(getCatalogKey(), JSON.stringify(merged));
+      catalogAcceptedSignature = catalogSignature(catalogServerBooks);
+      localStorage.setItem(getCatalogBaselineKey(), catalogAcceptedSignature);
       catalogLoadState = 'ready';
       catalogMergeChoices.clear();
       if (catalogSignature(merged) !== catalogSignature(catalogServerBooks)) markAdminChangesUnsaved();
@@ -4190,14 +4195,26 @@
         catalogServerBooks = JSON.parse(JSON.stringify(remote));
         if (hasUnsavedAdminChanges) catalogLocalBooks = JSON.parse(JSON.stringify(booksData));
         const local = catalogLocalBooks || booksData;
-        if ((catalogHasLocalCache || hasUnsavedAdminChanges) && catalogSignature(local) !== catalogSignature(remote)) {
+        const localSignature = catalogSignature(local);
+        const remoteSignature = catalogSignature(remote);
+        const hasLocalDraft = localSignature !== remoteSignature
+          && catalogAcceptedSignature && localSignature !== catalogAcceptedSignature;
+        if ((catalogHasLocalCache || hasUnsavedAdminChanges)
+          && localSignature !== remoteSignature
+          && (!catalogAcceptedSignature || (hasLocalDraft && remoteSignature !== catalogAcceptedSignature))) {
           catalogLoadState = 'review';
+        } else if (hasLocalDraft && remoteSignature === catalogAcceptedSignature) {
+          // 伺服器仍是修改前的版本：保留本機草稿，允許明確確認儲存。
+          catalogLoadState = 'ready';
+          if (!hasUnsavedAdminChanges) markAdminChangesUnsaved();
         } else {
           catalogLoadState = 'ready';
           booksData = JSON.parse(JSON.stringify(remote));
           catalogLocalBooks = JSON.parse(JSON.stringify(remote));
           catalogHasLocalCache = true;
           localStorage.setItem(getCatalogKey(), JSON.stringify(remote));
+          catalogAcceptedSignature = remoteSignature;
+          localStorage.setItem(getCatalogBaselineKey(), catalogAcceptedSignature);
           renderAllViews();
         }
       }
@@ -4367,6 +4384,7 @@
       catalogServerUpdatedAt = '';
       catalogLocalBooks = null;
       catalogHasLocalCache = false;
+      catalogAcceptedSignature = '';
       catalogDocumentMissing = false;
       adminSettingsLoadState = 'loading';
       catalogMergeChoices.clear();
@@ -4603,6 +4621,7 @@
     function getStorageNamespace() { return 'wujia_'; }
     function getSemestersKey() { return `${getStorageNamespace()}semesters_list_v32`; }
     function getCatalogKey() { return `${getStorageNamespace()}book_trunks_shared_v33`; }
+    function getCatalogBaselineKey() { return `${getStorageNamespace()}book_trunks_server_signature_v34`; }
     // 僅供首次轉換讀取舊版各學期快取，絕不再寫入。
     function getLegacyCatalogKey() { return `${getStorageNamespace()}book_trunks_${currentSemester}_v32`; }
     function getRotationKey() { return `${getStorageNamespace()}rotation_schedule_${currentSemester}_v32`; }
@@ -4959,6 +4978,7 @@
     // 清冊為共用快取；其他設定仍依目前學期讀取。
     function loadAllData() {
       const storedCatalog = localStorage.getItem(getCatalogKey());
+      catalogAcceptedSignature = localStorage.getItem(getCatalogBaselineKey()) || '';
       catalogHasLocalCache = Boolean(storedCatalog || localStorage.getItem(getLegacyCatalogKey()));
       if (storedCatalog) {
         try { booksData = JSON.parse(storedCatalog); } 
