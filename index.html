@@ -3003,13 +3003,13 @@
     async function fetchSemesterFromFirestoreRest(semesterId) {
       const token = await promiseWithTimeout(
         currentUser?.getIdToken(true),
-        5000,
-        '更新登入權杖超過 5 秒。'
+        4000,
+        '更新登入權杖超過 4 秒。'
       );
       if (!token) throw new Error('找不到目前登入的 Firebase 身分。');
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/semesters/${encodeURIComponent(semesterId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}`;
       const controller = new AbortController();
-      const abortTimer = setTimeout(() => controller.abort(), 8000);
+      const abortTimer = setTimeout(() => controller.abort(), 6000);
       try {
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
@@ -3023,7 +3023,7 @@
         const document = await response.json();
         return decodeFirestoreRestFields(document.fields || {});
       } catch (error) {
-        if (error?.name === 'AbortError') throw new Error('Firestore HTTPS 讀取超過 8 秒。');
+        if (error?.name === 'AbortError') throw new Error('Firestore HTTPS 讀取超過 6 秒。');
         throw error;
       } finally {
         clearTimeout(abortTimer);
@@ -3710,8 +3710,8 @@
         if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
         setCloudSyncStatus('failed');
         const detail = loadErrors.length ? ` 原因：${loadErrors.join('；')}` : '';
-        setAdminCloudDataLoaded(false, `讀取正式資料超過 15 秒，尚未取得伺服器確認。${detail} 完成前不能修改或儲存。`);
-      }, 15000);
+        setAdminCloudDataLoaded(false, `讀取正式資料超過 12 秒，尚未取得伺服器確認。${detail} 完成前不能修改或儲存。`);
+      }, 12000);
 
       const applyServerSnapshot = snapshot => {
         if (requestId !== adminCloudLoadRequestId || semesterId !== currentSemester) return;
@@ -3756,20 +3756,8 @@
         console.warn('Firestore 即時讀取失敗，將嘗試 REST 備援：', error);
       };
 
-      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
-        if (snapshot.metadata.fromCache) {
-          if (!adminCloudDataLoaded) {
-            setAdminCloudDataLoaded(false, '正在連線並驗證正式 Firestore 資料，請稍候；目前顯示的暫存內容不可修改或儲存。');
-          }
-          return;
-        }
-        applyServerSnapshot(snapshot);
-      }, noteSdkLoadError);
-
-      // 部分校園或家用網路會讓即時監聽的長連線卡住；額外直接向伺服器讀取一次，
-      // 讓本機預覽仍可取得已驗證的正式資料，或明確回報錯誤。
-      getSemesterDocument().get({ source: 'server' }).then(applyServerSnapshot).catch(noteSdkLoadError);
-
+      // HTTPS 備援必須先獨立啟動；即使 Firestore SDK 在註冊監聽時同步拋錯，
+      // 也不能阻止本機預覽驗證正式資料。
       restFallbackTimer = setTimeout(async () => {
         if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
         try {
@@ -3781,7 +3769,28 @@
           setAdminCloudDataLoaded(false, `HTTPS 備援讀取失敗：${detail} 正在等待最後一次即時連線；完成前不能修改或儲存。`);
           console.error('Firestore REST 備援讀取失敗：', error);
         }
-      }, 3000);
+      }, 0);
+
+      try {
+        cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
+          if (snapshot.metadata.fromCache) {
+            if (!adminCloudDataLoaded) {
+              setAdminCloudDataLoaded(false, '正在連線並驗證正式 Firestore 資料，請稍候；目前顯示的暫存內容不可修改或儲存。');
+            }
+            return;
+          }
+          applyServerSnapshot(snapshot);
+        }, noteSdkLoadError);
+      } catch (error) {
+        noteSdkLoadError(error);
+      }
+
+      // 直接讀取與即時監聽並行；兩者任一先取得伺服器資料即可解除鎖定。
+      try {
+        getSemesterDocument().get({ source: 'server' }).then(applyServerSnapshot).catch(noteSdkLoadError);
+      } catch (error) {
+        noteSdkLoadError(error);
+      }
 
       if (cloudSelectionUnsubscribe) cloudSelectionUnsubscribe();
       cloudSelectionUnsubscribe = firestoreDb.collection('selections').where('semesterId', '==', currentSemester).onSnapshot(snapshot => {
