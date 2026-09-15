@@ -1943,9 +1943,6 @@
   <!-- 右側主內容工作區 (Main Content Area, 左留邊 margin-left: 240px) -->
   <main id="app-main" class="hidden library-main flex-1 min-h-screen p-8 lg:p-10">
     <div class="max-w-[1920px] mx-auto">
-      <section id="admin-cloud-loading-banner" class="hidden mb-5 rounded-2xl border border-[#D8CEBE] bg-[#FFF8E8] px-5 py-4 text-[#7A5B22] shadow-sm" role="status" aria-live="polite">
-        正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。
-      </section>
       
       <!-- 右側頂部列：當前頁面名稱與【右上角學期選擇器】＋ 操作按鈕 -->
       <div class="app-page-header flex items-center justify-between mb-8 pb-2 no-print">
@@ -2595,10 +2592,6 @@
     let authErrorMessage = '';
     let isAdmin = false;
     let cloudReady = false;
-    // 管理員必須收到 Firestore 的伺服器快照後，才能操作正式資料。
-    // 這可避免新電腦先顯示 localStorage／預設排程時被誤當成正式內容。
-    let adminCloudDataLoaded = false;
-    let adminCloudLoadRequestId = 0;
     let cloudSemesterUnsubscribe = null;
     let cloudSelectionUnsubscribe = null;
     let teacherPortalUnsubscribe = null;
@@ -2698,15 +2691,9 @@
     }
 
     function requireAdmin() {
-      if (!isAdmin) {
-        alert('此功能僅限系統管理者使用。');
-        return false;
-      }
-      if (!adminCloudDataLoaded) {
-        alert('正式資料仍在讀取中，或目前無法連線至 Firestore。請等待資料讀取完成後再修改。');
-        return false;
-      }
-      return true;
+      if (isAdmin) return true;
+      alert('此功能僅限系統管理者使用。');
+      return false;
     }
 
     async function signInWithGoogle() {
@@ -2953,81 +2940,6 @@
     function setCloudSyncStatus(status) {
       cloudSyncStatus = status;
       updateCloudSyncStatusUi();
-    }
-
-    function setAdminCloudDataLoaded(loaded, message = '') {
-      adminCloudDataLoaded = loaded;
-      const banner = document.getElementById('admin-cloud-loading-banner');
-      if (!banner) return;
-      banner.classList.toggle('hidden', !isAdmin);
-      banner.classList.toggle('border-[#D8CEBE]', !loaded);
-      banner.classList.toggle('bg-[#FFF8E8]', !loaded);
-      banner.classList.toggle('text-[#7A5B22]', !loaded);
-      banner.classList.toggle('border-[#B8D5C3]', loaded);
-      banner.classList.toggle('bg-[#EDF7F0]', loaded);
-      banner.classList.toggle('text-[#2C5E43]', loaded);
-      banner.textContent = message || (loaded
-        ? '正式資料已讀取完成，現在可以修改或儲存。'
-        : '正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。');
-    }
-
-    function decodeFirestoreRestValue(value) {
-      if (!value || typeof value !== 'object') return null;
-      if (Object.prototype.hasOwnProperty.call(value, 'nullValue')) return null;
-      if (Object.prototype.hasOwnProperty.call(value, 'stringValue')) return value.stringValue;
-      if (Object.prototype.hasOwnProperty.call(value, 'booleanValue')) return value.booleanValue;
-      if (Object.prototype.hasOwnProperty.call(value, 'integerValue')) return Number(value.integerValue);
-      if (Object.prototype.hasOwnProperty.call(value, 'doubleValue')) return value.doubleValue;
-      if (Object.prototype.hasOwnProperty.call(value, 'timestampValue')) return value.timestampValue;
-      if (Object.prototype.hasOwnProperty.call(value, 'arrayValue')) {
-        return (value.arrayValue.values || []).map(decodeFirestoreRestValue);
-      }
-      if (Object.prototype.hasOwnProperty.call(value, 'mapValue')) {
-        return decodeFirestoreRestFields(value.mapValue.fields || {});
-      }
-      return null;
-    }
-
-    function decodeFirestoreRestFields(fields) {
-      return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decodeFirestoreRestValue(value)]));
-    }
-
-    function promiseWithTimeout(promise, timeoutMs, message) {
-      let timer = null;
-      const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
-      });
-      return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-    }
-
-    async function fetchSemesterFromFirestoreRest(semesterId) {
-      const token = await promiseWithTimeout(
-        currentUser?.getIdToken(true),
-        4000,
-        '更新登入權杖超過 4 秒。'
-      );
-      if (!token) throw new Error('找不到目前登入的 Firebase 身分。');
-      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/semesters/${encodeURIComponent(semesterId)}?key=${encodeURIComponent(firebaseConfig.apiKey)}`;
-      const controller = new AbortController();
-      const abortTimer = setTimeout(() => controller.abort(), 6000);
-      try {
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal
-        });
-        if (!response.ok) {
-          const body = await response.json().catch(() => null);
-          const detail = String(body?.error?.message || '').trim();
-          throw new Error(`Firestore REST 讀取失敗（HTTP ${response.status}${detail ? `：${detail}` : ''}）。`);
-        }
-        const document = await response.json();
-        return decodeFirestoreRestFields(document.fields || {});
-      } catch (error) {
-        if (error?.name === 'AbortError') throw new Error('Firestore HTTPS 讀取超過 6 秒。');
-        throw error;
-      } finally {
-        clearTimeout(abortTimer);
-      }
     }
 
     function markAdminChangesUnsaved() {
@@ -3700,35 +3612,19 @@
 
     function bindSemesterCloudListener() {
       if (cloudSemesterUnsubscribe) cloudSemesterUnsubscribe();
-      const requestId = ++adminCloudLoadRequestId;
-      const semesterId = currentSemester;
-      setAdminCloudDataLoaded(false);
-      setCloudSyncStatus('waiting');
-      let restFallbackTimer = null;
-      const loadErrors = [];
-      const loadTimeout = setTimeout(() => {
-        if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
-        setCloudSyncStatus('failed');
-        const detail = loadErrors.length ? ` 原因：${loadErrors.join('；')}` : '';
-        setAdminCloudDataLoaded(false, `讀取正式資料超過 12 秒，尚未取得伺服器確認。${detail} 完成前不能修改或儲存。`);
-      }, 12000);
-
-      const applyServerSnapshot = snapshot => {
-        if (requestId !== adminCloudLoadRequestId || semesterId !== currentSemester) return;
+      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot(snapshot => {
         if (!snapshot.exists) {
+          // 正式資料不存在時不可用瀏覽器快取自動建立，避免舊資料覆寫剛完成的發布或還原。
           setCloudSyncStatus('waiting');
-          setAdminCloudDataLoaded(false, '找不到目前學期的正式資料，為避免覆寫資料，已禁止修改與儲存。');
           console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
           return;
         }
+        // 管理員已在畫面上修改、但尚未按 LIBRARY 正式儲存時，不能讓任何
+        // 雲端回傳（例如另存教師選書開放時段所觸發的快照）蓋回舊清冊。
+        // 否則新建書箱會先在畫面消失，接著被當成舊資料發布並從教師端移除。
         if (hasUnsavedAdminChanges) return;
         if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
-        applyServerData(snapshot.data());
-      };
-
-      const applyServerData = data => {
-        if (requestId !== adminCloudLoadRequestId || semesterId !== currentSemester) return;
-        if (hasUnsavedAdminChanges || pendingCloudSemesterSaves > 0) return;
+        const data = snapshot.data();
         booksData = Array.isArray(data.booksData) ? data.booksData : booksData;
         gradeCounts = data.gradeCounts || gradeCounts;
         rotationDates = data.rotationDates || rotationDates;
@@ -3741,56 +3637,12 @@
         localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
         recomputeChainFlow('7');
         recomputeChainFlow('8');
-        clearTimeout(loadTimeout);
-        if (restFallbackTimer) clearTimeout(restFallbackTimer);
-        setAdminCloudDataLoaded(true);
         if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
         renderAllViews();
-      };
-
-      const noteSdkLoadError = error => {
-        if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
-        const detail = String(error?.code || error?.message || '未知錯誤');
-        if (!loadErrors.includes(`即時連線：${detail}`)) loadErrors.push(`即時連線：${detail}`);
-        setAdminCloudDataLoaded(false, 'Firestore 即時連線暫時失敗，正在改用安全備援讀取正式資料；完成前不能修改或儲存。');
-        console.warn('Firestore 即時讀取失敗，將嘗試 REST 備援：', error);
-      };
-
-      // HTTPS 備援必須先獨立啟動；即使 Firestore SDK 在註冊監聽時同步拋錯，
-      // 也不能阻止本機預覽驗證正式資料。
-      restFallbackTimer = setTimeout(async () => {
-        if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
-        try {
-          const data = await fetchSemesterFromFirestoreRest(semesterId);
-          applyServerData(data);
-        } catch (error) {
-          const detail = String(error?.message || error || '未知錯誤');
-          loadErrors.push(`HTTPS 備援：${detail}`);
-          setAdminCloudDataLoaded(false, `HTTPS 備援讀取失敗：${detail} 正在等待最後一次即時連線；完成前不能修改或儲存。`);
-          console.error('Firestore REST 備援讀取失敗：', error);
-        }
-      }, 0);
-
-      try {
-        cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
-          if (snapshot.metadata.fromCache) {
-            if (!adminCloudDataLoaded) {
-              setAdminCloudDataLoaded(false, '正在連線並驗證正式 Firestore 資料，請稍候；目前顯示的暫存內容不可修改或儲存。');
-            }
-            return;
-          }
-          applyServerSnapshot(snapshot);
-        }, noteSdkLoadError);
-      } catch (error) {
-        noteSdkLoadError(error);
-      }
-
-      // 直接讀取與即時監聽並行；兩者任一先取得伺服器資料即可解除鎖定。
-      try {
-        getSemesterDocument().get({ source: 'server' }).then(applyServerSnapshot).catch(noteSdkLoadError);
-      } catch (error) {
-        noteSdkLoadError(error);
-      }
+      }, error => {
+        setCloudSyncStatus('failed');
+        console.error('讀取學期資料失敗：', error);
+      });
 
       if (cloudSelectionUnsubscribe) cloudSelectionUnsubscribe();
       cloudSelectionUnsubscribe = firestoreDb.collection('selections').where('semesterId', '==', currentSemester).onSnapshot(snapshot => {
@@ -3939,7 +3791,6 @@
       clearTeacherSelectionWindowLoadTimer();
       teacherListenersSemesterId = '';
       cloudReady = false;
-      adminCloudDataLoaded = false;
       teacherSelectionWindowLoaded = false;
       teacherSelectionWindowLoadError = '';
       currentUser = user;
