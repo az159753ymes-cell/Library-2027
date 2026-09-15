@@ -2209,7 +2209,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.66
+      圖書館系統 v4.1.67
     </div>
   </aside>
 
@@ -6496,6 +6496,11 @@
     // 渲染滿版螢幕輪換表格 (欄位: 【班級 12%】 ➔ 【第一本 29.3%】 ➔ 【第二本 29.3%】 ➔ 【第三本 29.3%】)
     function renderRotationTable() {
       inlineEditingSlot = null;
+      // 切換學期或接收背景快照時，依目前頁籤恢復主標題；不能覆蓋其他頁面。
+      if (currentActiveTab === 'rotation') {
+        const pageTitle = document.getElementById('page-header-title');
+        if (pageTitle) pageTitle.textContent = '班際輪換';
+      }
       syncHistoricalRotationControls();
 
       const classes = getClassesForGrade(currentGrade);
