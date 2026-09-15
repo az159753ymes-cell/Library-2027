@@ -2127,6 +2127,7 @@
             <p id="admin-save-popover-error" class="hidden mt-3 rounded-lg bg-[#FDECE7] px-3 py-2 text-sm leading-5 text-[#A53F25]"></p>
           </div>
           <div id="admin-save-popover-actions" class="flex justify-end gap-2 border-t border-[#E7DDD0] px-5 py-4">
+            <button type="button" data-local-catalog-backup onclick="downloadLocalCatalogBackup()" class="mr-auto rounded-xl border border-[#B8A894] bg-white px-3 py-2 text-sm font-bold text-[#52796F]">備份本機清冊</button>
             <button id="admin-save-popover-cancel" type="button" onclick="closeAdminSavePopover()"
               class="rounded-xl border border-[#B8A894] bg-white px-4 py-2 text-sm font-bold text-[#52796F] transition hover:bg-[#F5EFEA]">取消</button>
             <button id="admin-save-popover-confirm" type="button" onclick="confirmAdminSave()"
@@ -2199,7 +2200,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.67
+      圖書館系統 v4.1.68
     </div>
   </aside>
 
@@ -2297,6 +2298,19 @@
 
       <!-- 頁籤一：書箱清冊頁面 -->
       <div id="tab-catalog">
+
+        <section id="catalog-source-panel" class="mb-4 rounded-2xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-sm font-semibold text-[#52796F] no-print" role="status" aria-live="polite">
+          <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button type="button" onclick="refreshCatalogFromServer()" class="rounded-lg border border-[#B8A894] px-3 py-1.5">重新讀取正式清冊</button>
+            <button type="button" data-local-catalog-backup onclick="downloadLocalCatalogBackup()" class="rounded-lg border border-[#B8A894] px-3 py-1.5">下載本機清冊備份</button>
+          </div>
+          <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
+            <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，還須按 LIBRARY → 確認儲存。</p>
+            <div id="catalog-merge-rows" class="max-h-72 space-y-2 overflow-y-auto"></div>
+            <button type="button" onclick="applyCatalogMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認合併至目前畫面</button>
+          </div>
+        </section>
 
         <section class="wugao-banner relative overflow-hidden rounded-2xl border mb-6 no-print" aria-label="五誥棧圖書館橫幅">
           <img src="assets/wugao-library-banner-v5-1500.webp" alt="五誥棧圖書館藝術橫幅，長髮女學生在窗邊閱讀" class="w-full h-full object-cover" fetchpriority="high" />
@@ -2881,6 +2895,14 @@
     let pendingCloudSemesterSaves = 0;
     let cloudSyncStatus = 'idle';
     let hasUnsavedAdminChanges = false;
+    let catalogLoadState = 'loading';
+    let catalogServerBooks = null;
+    let catalogServerUpdatedAt = '';
+    let catalogLocalBooks = null;
+    let catalogHasLocalCache = false;
+    let catalogDocumentMissing = false;
+    let adminSettingsLoadState = 'loading';
+    let catalogMergeChoices = new Map();
     let teacherListenersSemesterId = '';
     let selectionRecords = {};
     let teacherSelectionWindow = { startAt: '', endAt: '', importedEndAt: '' };
@@ -3136,22 +3158,28 @@
 
     function getCloudSyncState() {
       const states = {
-        idle: { text: '目前資料已儲存', className: 'text-[#52796F]' },
+        idle: { text: '已讀取正式清冊；目前沒有待儲存修改', className: 'text-[#52796F]' },
         unsaved: { text: '尚未儲存；教師端尚未更新', className: 'text-[#B7791F]' },
         syncing: { text: '正在儲存正式資料…', className: 'text-[#B7791F]' },
         waiting: { text: '等待雲端連線…', className: 'text-[#B7791F]' },
         saved: { text: '資料已儲存，教師端已更新', className: 'text-[#2C5E43]' },
         failed: { text: '儲存失敗；目前修改仍保留', className: 'text-[#C94A29]' }
       };
+      if (catalogLoadState === 'loading') return { text: '尚未取得正式清冊', className: 'text-[#B7791F]' };
+      if (catalogLoadState === 'missing') return { text: '正式清冊不存在；目前畫面是本機資料', className: 'text-[#C94A29]' };
+      if (catalogLoadState === 'failed') return { text: '正式清冊讀取失敗；目前畫面是本機資料', className: 'text-[#C94A29]' };
+      if (catalogLoadState === 'review') return { text: '本機與正式清冊不同；請先比對合併', className: 'text-[#B7791F]' };
+      if (adminSettingsLoadState !== 'ready') return { text: '學期設定尚未從正式資料庫讀取', className: 'text-[#C94A29]' };
       return states[cloudSyncStatus] || states.idle;
     }
 
     function getReadableCloudError(error) {
       const code = String(error?.code || '');
+      if (code === 'catalog-conflict') return '正式清冊已被其他裝置修改。請到書箱清冊上方逐本比對，再重新確認儲存。';
       if (/permission-denied/i.test(code)) return '沒有寫入正式資料的權限。請確認您以管理員帳號登入。';
       if (/resource-exhausted|quota/i.test(code)) return 'Firestore 免費額度目前不足，今天請先停止重試，待額度恢復後再儲存。';
       if (/unavailable|network/i.test(code)) return '無法連線至正式資料庫。請確認網路後再按一次儲存。';
-      return '請確認網路與 Firestore 狀態後，再由 LOGO 重新開啟此視窗儲存。';
+      return String(error?.message || '請確認網路與 Firestore 狀態後，再由 LOGO 重新開啟此視窗儲存。');
     }
 
     function renderAdminSavePopover(error = null) {
@@ -3164,20 +3192,23 @@
       if (!title || !status || !message || !confirm || !cancel) return;
 
       const state = getCloudSyncState();
-      const isSaving = cloudSyncStatus === 'syncing';
+      const isSaving = pendingCloudSemesterSaves > 0;
       const hasPendingChanges = hasUnsavedAdminChanges;
+      const canSave = catalogLoadState === 'ready' && adminSettingsLoadState === 'ready';
       const savedHistoricalSemester = cloudSyncStatus === 'saved' && currentSemester !== getTeacherSelectionSemesterId();
-      title.textContent = isSaving ? '正在儲存資料' : (hasPendingChanges ? '儲存目前資料' : '目前資料已儲存');
+      title.textContent = isSaving ? '正在儲存資料' : (hasPendingChanges ? '儲存目前資料' : '查看資料來源與儲存狀態');
       status.textContent = savedHistoricalSemester ? '資料已儲存' : state.text;
       status.className = `mt-1 text-sm font-semibold ${state.className}`;
       message.textContent = isSaving
-        ? '正在將目前學期的書箱、班級設定、輪換與必要教師端資料寫入正式資料庫。請勿關閉此視窗。'
-        : hasPendingChanges
+        ? '正在將清冊與學期資料寫入正式資料庫，並從伺服器核對教師端書目。請等待確認結果。'
+          : !canSave
+            ? '目前尚未確認正式清冊。請查看書箱清冊上方的資料來源與比對結果；此時不會覆寫 Firestore。'
+          : hasPendingChanges
           ? '目前畫面的修改尚未寫入正式資料庫，教師端也尚未更新。確認後才會儲存。'
           : savedHistoricalSemester
             ? '目前學期資料已儲存。這不是教師選書的最新學期，因此教師端不會變更。'
             : '目前學期沒有尚未儲存的修改。此時僅查看狀態，不會寫入 Firestore。';
-      confirm.classList.toggle('hidden', !hasPendingChanges || isSaving);
+      confirm.classList.toggle('hidden', !hasPendingChanges || isSaving || !canSave);
       cancel.textContent = hasPendingChanges && !isSaving ? '取消' : '關閉';
       cancel.disabled = isSaving;
       if (error) {
@@ -3210,7 +3241,7 @@
 
     function closeAdminSavePopover() {
       const popover = document.getElementById('admin-save-popover');
-      if (!popover || cloudSyncStatus === 'syncing') return;
+      if (!popover || pendingCloudSemesterSaves > 0) return;
       popover.classList.add('hidden');
     }
 
@@ -3647,9 +3678,9 @@
       if (!isAdmin) throw new Error('目前不是管理員帳號。');
       if (currentSemester !== getTeacherSelectionSemesterId()) throw new Error('目前不是教師選書學期。');
       const [existingTeacherBooks, settingsSnapshot, portalSnapshot] = await Promise.all([
-        firestoreDb.collection('teacherBooks').where('semesterId', '==', currentSemester).get(),
-        firestoreDb.collection('teacherPortal').doc('settings').get(),
-        getTeacherPortalDocument().get()
+        firestoreDb.collection('teacherBooks').where('semesterId', '==', currentSemester).get({ source: 'server' }),
+        firestoreDb.collection('teacherPortal').doc('settings').get({ source: 'server' }),
+        getTeacherPortalDocument().get({ source: 'server' })
       ]);
       const batch = firestoreDb.batch();
       let hasChanges = false;
@@ -3728,7 +3759,7 @@
       const activeSemester = getTeacherSelectionSemesterId();
       if (!activeSemester || activeSemester === currentSemester) return;
       const existingTeacherBooks = await firestoreDb.collection('teacherBooks')
-        .where('semesterId', '==', activeSemester).get();
+        .where('semesterId', '==', activeSemester).get({ source: 'server' });
       const batch = firestoreDb.batch();
       const activeBookIds = new Set();
       const existingBooksById = new Map();
@@ -3774,35 +3805,74 @@
     }
 
     async function saveCurrentSemesterToCloud(payload = buildCurrentSemesterSavePayload(), selectionWindowOverride = null) {
-      if (!cloudReady || !isAdmin) return;
+      if (!cloudReady || !isAdmin || catalogLoadState !== 'ready' || adminSettingsLoadState !== 'ready') {
+        throw new Error('正式清冊或學期設定尚未從伺服器確認，不能儲存。');
+      }
       pendingCloudSemesterSaves += 1;
       setCloudSyncStatus('syncing');
       const waitingTimer = setTimeout(() => setCloudSyncStatus('waiting'), 5000);
       try {
-        await Promise.all([
-          getSemesterDocument().set({
+        const nextBooks = JSON.parse(JSON.stringify(booksData));
+        const expectedSignature = catalogSignature(catalogServerBooks);
+        await firestoreDb.runTransaction(async transaction => {
+          const catalogRef = getCatalogDocument();
+          const current = await transaction.get(catalogRef);
+          if (current.exists === catalogDocumentMissing
+            || (current.exists && catalogSignature(current.data().booksData) !== expectedSignature)) {
+            const error = new Error('正式清冊已由其他裝置修改。請重新比對後再儲存。');
+            error.code = 'catalog-conflict';
+            throw error;
+          }
+          transaction.set(catalogRef, {
+            booksData: nextBooks,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: currentUser.uid
+          }, { merge: true });
+        });
+        await getSemesterDocument().set({
             ...payload,
             // 清除舊版按學期儲存的清冊，避免往後誤被當成正式來源。
             booksData: firebase.firestore.FieldValue.delete(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedBy: currentUser.uid
-          }, { merge: true }),
-          // 第一次確認儲存時，以目前學期畫面上的清冊建立共用正式資料。
-          getCatalogDocument().set({
-            booksData: JSON.parse(JSON.stringify(booksData)),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedBy: currentUser.uid
-          }, { merge: true })
-        ]);
+          }, { merge: true });
         await firestoreDb.waitForPendingWrites();
+        const confirmedCatalog = await getCatalogDocument().get({ source: 'server' });
+        if (!confirmedCatalog.exists || catalogSignature(confirmedCatalog.data().booksData) !== catalogSignature(nextBooks)) {
+          throw new Error('正式清冊寫入後未能從伺服器確認。');
+        }
+        catalogServerBooks = JSON.parse(JSON.stringify(nextBooks));
+        catalogDocumentMissing = false;
         if (currentSemester === getTeacherSelectionSemesterId()) {
           await publishTeacherSelectionData(selectionWindowOverride);
         } else {
           await publishSharedCatalogToActiveTeacherSemester();
         }
+        const teacherSemester = getTeacherSelectionSemesterId();
+        const teacherSnapshot = await firestoreDb.collection('teacherBooks')
+          .where('semesterId', '==', teacherSemester).get({ source: 'server' });
+        const expectedTeacherBooks = new Map(nextBooks.filter(book => String(book.code || '').trim())
+          .map(book => [`${teacherSemester}_${String(book.code).trim()}`, buildTeacherBookData(book, teacherSemester)]));
+        if (teacherSnapshot.size !== expectedTeacherBooks.size || teacherSnapshot.docs.some(doc => {
+          const expected = expectedTeacherBooks.get(doc.id);
+          return !expected || ['semesterId', 'code', 'title', 'total', 'available']
+            .some(key => String(doc.data()[key] ?? '') !== String(expected[key] ?? ''));
+        })) throw new Error('正式清冊已儲存，但教師端書目尚未完成同步。');
+        const finalCatalog = await getCatalogDocument().get({ source: 'server' });
+        if (!finalCatalog.exists || catalogSignature(finalCatalog.data().booksData) !== catalogSignature(nextBooks)) {
+          const error = new Error('教師端更新期間，正式清冊又被其他裝置修改。請重新比對。');
+          error.code = 'catalog-conflict';
+          throw error;
+        }
+        catalogLocalBooks = JSON.parse(JSON.stringify(nextBooks));
+        catalogHasLocalCache = true;
+        localStorage.setItem(getCatalogKey(), JSON.stringify(nextBooks));
         hasUnsavedAdminChanges = false;
+        catalogLoadState = 'ready';
+        renderCatalogSource();
         if (pendingCloudSemesterSaves === 1) setCloudSyncStatus('saved');
       } catch (error) {
+        if (error?.code === 'catalog-conflict') await refreshCatalogFromServer();
         setCloudSyncStatus('failed');
         throw error;
       } finally {
@@ -3824,13 +3894,13 @@
         renderAdminSavePopover();
         return;
       }
-      if (!cloudReady) {
+      if (!cloudReady || catalogLoadState !== 'ready' || adminSettingsLoadState !== 'ready') {
         setCloudSyncStatus('waiting');
         renderAdminSavePopover();
         return;
       }
       const logoButton = document.getElementById('admin-logo-save-btn');
-      if (logoButton?.disabled) return;
+      if (logoButton?.disabled || pendingCloudSemesterSaves > 0) return;
       if (logoButton) logoButton.disabled = true;
       let saveError = null;
       try {
@@ -4005,20 +4075,159 @@
       });
     }
 
+    function catalogSignature(items) {
+      return JSON.stringify((items || []).map(book => Object.fromEntries(
+        Object.keys(book).sort().map(key => [key, book[key]])
+      )).sort((a, b) => String(a.code).localeCompare(String(b.code), 'zh-TW', { numeric: true })));
+    }
+
+    function renderCatalogSource() {
+      const status = document.getElementById('catalog-source-status');
+      const panel = document.getElementById('catalog-merge-panel');
+      const rows = document.getElementById('catalog-merge-rows');
+      if (!status || !panel || !rows || !isAdmin) return;
+      const labels = {
+        loading: '尚未從 Firestore 伺服器取得正式清冊；目前顯示本機或預設資料。',
+        missing: 'Firestore 正式清冊不存在；目前顯示本機或預設資料，禁止直接覆寫。',
+        failed: 'Firestore 正式清冊讀取失敗；目前顯示本機或預設資料，請檢查連線與權限。',
+        review: catalogDocumentMissing
+          ? 'Firestore 正式清冊不存在；本機資料已保留，請先檢查差異再決定是否建立。'
+          : '已讀取正式清冊，但它與本機清冊不同；目前顯示保留的本機資料。',
+        ready: adminSettingsLoadState !== 'ready'
+          ? '已取得正式清冊，但學期設定尚未從伺服器確認；目前不能儲存。'
+          : hasUnsavedAdminChanges
+          ? '已從 Firestore 伺服器讀取正式清冊；目前畫面仍有尚未儲存的修改。'
+          : '已從 Firestore 伺服器讀取正式清冊。'
+      };
+      const lastCode = (catalogServerBooks || []).reduce((last, book) =>
+        Number(book.code) > Number(last) ? String(book.code) : last, '0');
+      const serverDetail = catalogServerBooks && !catalogDocumentMissing
+        ? ` 正式清冊 ${catalogServerBooks.length} 本，最後編號 ${lastCode}${catalogServerUpdatedAt ? `，更新時間 ${catalogServerUpdatedAt}` : ''}。`
+        : '';
+      status.textContent = (labels[catalogLoadState] || labels.loading) + serverDetail;
+      document.querySelectorAll('[data-local-catalog-backup]').forEach(button => {
+        button.disabled = !catalogHasLocalCache && !hasUnsavedAdminChanges;
+        button.classList.toggle('opacity-50', button.disabled);
+      });
+      panel.classList.toggle('hidden', catalogLoadState !== 'review');
+      if (catalogLoadState !== 'review') return;
+      const localByCode = new Map((catalogLocalBooks || []).map(book => [String(book.code), book]));
+      const serverByCode = new Map((catalogServerBooks || []).map(book => [String(book.code), book]));
+      const codes = [...new Set([...localByCode.keys(), ...serverByCode.keys()])]
+        .sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
+      rows.innerHTML = codes.filter(code => catalogSignature([localByCode.get(code)].filter(Boolean)) !== catalogSignature([serverByCode.get(code)].filter(Boolean)))
+        .map(code => {
+          const local = localByCode.get(code);
+          const server = serverByCode.get(code);
+          const choice = catalogMergeChoices.get(code) || (local && !server ? 'local' : 'server');
+          const details = book => book
+            ? `書名 ${escapePrintText(sanitizeTitle(book.title))}；缺號 ${escapePrintText(book.missing || '無')}；尾號 ${escapePrintText(book.maxNum || '無')}；數量 ${escapePrintText(book.total || '無')}；備註 ${escapePrintText(book.note || '無')}；輪換 ${book.inRotation === false ? '否' : '是'}`
+            : '無此書箱';
+          return `<div class="rounded-lg border border-[#E8E1D5] p-2"><label class="block">
+            <span class="font-bold">書箱${escapePrintText(code)}號</span>
+            <span class="block">本機：${details(local)}</span><span class="block">正式：${details(server)}</span>
+            <select data-catalog-merge-code="${escapePrintText(code)}" class="mt-1 rounded border border-[#B8A894] bg-white px-2 py-1">
+              <option value="server" ${choice === 'server' ? 'selected' : ''}>保留正式資料${server ? '' : '（刪除）'}</option>
+              <option value="local" ${choice === 'local' ? 'selected' : ''}>保留本機資料${local ? '' : '（刪除）'}</option>
+            </select></label></div>`;
+        }).join('');
+      rows.querySelectorAll('[data-catalog-merge-code]').forEach(select => {
+        select.onchange = () => catalogMergeChoices.set(select.dataset.catalogMergeCode, select.value);
+      });
+    }
+
+    function applyCatalogMerge() {
+      if (!requireAdmin() || catalogLoadState !== 'review') return;
+      const localByCode = new Map((catalogLocalBooks || []).map(book => [String(book.code), book]));
+      const serverByCode = new Map((catalogServerBooks || []).map(book => [String(book.code), book]));
+      document.querySelectorAll('[data-catalog-merge-code]').forEach(select => {
+        catalogMergeChoices.set(select.dataset.catalogMergeCode, select.value);
+      });
+      const merged = [];
+      for (const code of new Set([...localByCode.keys(), ...serverByCode.keys()])) {
+        const source = catalogMergeChoices.get(code) || (localByCode.has(code) && !serverByCode.has(code) ? 'local' : 'server');
+        const book = (source === 'local' ? localByCode : serverByCode).get(code);
+        if (book) merged.push(book);
+      }
+      merged.sort((a, b) => String(a.code).localeCompare(String(b.code), 'zh-TW', { numeric: true }));
+      booksData = merged;
+      catalogLocalBooks = JSON.parse(JSON.stringify(merged));
+      localStorage.setItem(getCatalogKey(), JSON.stringify(merged));
+      catalogLoadState = 'ready';
+      catalogMergeChoices.clear();
+      if (catalogSignature(merged) !== catalogSignature(catalogServerBooks)) markAdminChangesUnsaved();
+      renderAllViews();
+      renderCatalogSource();
+      updateCloudSyncStatusUi();
+    }
+
+    function downloadLocalCatalogBackup() {
+      if (!requireAdmin() || (!catalogHasLocalCache && !hasUnsavedAdminChanges)) return;
+      const payload = { format: 'library-local-catalog-backup-v1', exportedAt: new Date().toISOString(),
+        source: catalogLoadState, booksData: booksData };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `書箱清冊_本機備份_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function applyCloudCatalogSnapshot(snapshot) {
+      if (snapshot.metadata?.fromCache || snapshot.metadata?.hasPendingWrites) return;
+      if (!snapshot.exists || !Array.isArray(snapshot.data()?.booksData)) {
+        catalogDocumentMissing = true;
+        catalogServerBooks = [];
+        catalogServerUpdatedAt = '';
+        catalogLoadState = catalogHasLocalCache ? 'review' : 'missing';
+      } else {
+        catalogDocumentMissing = false;
+        const remote = snapshot.data().booksData;
+        const updatedAt = snapshot.data().updatedAt;
+        catalogServerUpdatedAt = updatedAt?.toDate?.()?.toLocaleString('zh-TW') || '';
+        catalogServerBooks = JSON.parse(JSON.stringify(remote));
+        if (hasUnsavedAdminChanges) catalogLocalBooks = JSON.parse(JSON.stringify(booksData));
+        const local = catalogLocalBooks || booksData;
+        if ((catalogHasLocalCache || hasUnsavedAdminChanges) && catalogSignature(local) !== catalogSignature(remote)) {
+          catalogLoadState = 'review';
+        } else {
+          catalogLoadState = 'ready';
+          booksData = JSON.parse(JSON.stringify(remote));
+          catalogLocalBooks = JSON.parse(JSON.stringify(remote));
+          catalogHasLocalCache = true;
+          localStorage.setItem(getCatalogKey(), JSON.stringify(remote));
+          renderAllViews();
+        }
+      }
+      renderCatalogSource();
+      updateCloudSyncStatusUi();
+    }
+
+    async function refreshCatalogFromServer() {
+      if (!requireAdmin() || !firestoreDb) return;
+      catalogLoadState = 'loading';
+      renderCatalogSource();
+      try {
+        applyCloudCatalogSnapshot(await getCatalogDocument().get({ source: 'server' }));
+      } catch (error) {
+        catalogLoadState = 'failed';
+        renderCatalogSource();
+        updateCloudSyncStatusUi();
+        console.error('讀取正式書香清冊失敗：', error);
+      }
+    }
+
     function bindCatalogCloudListener() {
       if (cloudCatalogUnsubscribe) cloudCatalogUnsubscribe();
-      cloudCatalogUnsubscribe = getCatalogDocument().onSnapshot(snapshot => {
-        // 舊版正式資料尚未轉換前，保留目前畫面清冊，等待管理員首次確認儲存。
-        if (!snapshot.exists || hasUnsavedAdminChanges) return;
-        const data = snapshot.data();
-        if (!Array.isArray(data.booksData)) return;
-        booksData = data.booksData;
-        localStorage.setItem(getCatalogKey(), JSON.stringify(booksData));
-        renderAllViews();
-      }, error => {
-        setCloudSyncStatus('failed');
-        console.error('讀取共用書香清冊失敗：', error);
+      cloudCatalogUnsubscribe = getCatalogDocument().onSnapshot(applyCloudCatalogSnapshot, error => {
+        catalogLoadState = 'failed';
+        renderCatalogSource();
+        updateCloudSyncStatusUi();
+        console.error('監聽正式書香清冊失敗：', error);
       });
+      refreshCatalogFromServer();
     }
 
     function applyTeacherPortalData(portalData = null) {
@@ -4108,20 +4317,30 @@
         });
         return;
       }
+      bindCatalogCloudListener();
       firestoreDb.collection('system').doc('settings').onSnapshot(snapshot => {
+        if (snapshot.metadata?.fromCache || snapshot.metadata?.hasPendingWrites) return;
         if (snapshot.exists && Array.isArray(snapshot.data().semesterList)) {
+          adminSettingsLoadState = 'ready';
           semesterList = snapshot.data().semesterList;
           localStorage.setItem(getSemestersKey(), JSON.stringify(semesterList));
           if (!semesterList.some(sem => sem.id === currentSemester)) currentSemester = semesterList[0].id;
         } else if (isAdmin) {
+          adminSettingsLoadState = 'missing';
           setCloudSyncStatus('waiting');
+          renderCatalogSource();
           console.warn('找不到學期設定；請確認正式資料後再以管理操作建立或儲存。');
           return;
         }
-        bindCatalogCloudListener();
         bindSemesterCloudListener();
         renderAllViews();
-      }, error => console.error('讀取系統設定失敗：', error));
+        renderCatalogSource();
+      }, error => {
+        adminSettingsLoadState = 'failed';
+        setCloudSyncStatus('failed');
+        renderCatalogSource();
+        console.error('讀取系統設定失敗：', error);
+      });
     }
 
     async function applyAuthState(user) {
@@ -4143,6 +4362,14 @@
       clearTeacherSelectionWindowLoadTimer();
       teacherListenersSemesterId = '';
       cloudReady = false;
+      catalogLoadState = 'loading';
+      catalogServerBooks = null;
+      catalogServerUpdatedAt = '';
+      catalogLocalBooks = null;
+      catalogHasLocalCache = false;
+      catalogDocumentMissing = false;
+      adminSettingsLoadState = 'loading';
+      catalogMergeChoices.clear();
       teacherSelectionWindowLoaded = false;
       teacherSelectionWindowLoadError = '';
       currentUser = user;
@@ -4175,6 +4402,7 @@
         const latestSemester = getLatestSemester();
         if (latestSemester) currentSemester = latestSemester.id;
         loadAllData();
+        renderCatalogSource();
         switchTab('catalog');
       } else {
         booksData = [];
@@ -4731,6 +4959,7 @@
     // 清冊為共用快取；其他設定仍依目前學期讀取。
     function loadAllData() {
       const storedCatalog = localStorage.getItem(getCatalogKey());
+      catalogHasLocalCache = Boolean(storedCatalog || localStorage.getItem(getLegacyCatalogKey()));
       if (storedCatalog) {
         try { booksData = JSON.parse(storedCatalog); } 
         catch (e) { booksData = JSON.parse(JSON.stringify(INITIAL_BOOKS)); }
@@ -4746,6 +4975,7 @@
         }
       }
 
+      if (catalogLoadState !== 'ready') catalogLocalBooks = JSON.parse(JSON.stringify(booksData));
       const storedCounts = localStorage.getItem(getGradeCountsKey());
       if (storedCounts) {
         try { gradeCounts = JSON.parse(storedCounts); } catch (e) { gradeCounts = { ...DEFAULT_GRADE_COUNTS }; }
@@ -4789,7 +5019,10 @@
 
     function saveCatalogToStorage() {
       localStorage.setItem(getCatalogKey(), JSON.stringify(booksData));
+      catalogHasLocalCache = true;
+      catalogLocalBooks = JSON.parse(JSON.stringify(booksData));
       queueCloudSemesterSave();
+      renderCatalogSource();
     }
 
     function saveRotationDataToStorage() {
