@@ -2958,8 +2958,16 @@
       adminCloudDataLoaded = loaded;
       const banner = document.getElementById('admin-cloud-loading-banner');
       if (!banner) return;
-      banner.classList.toggle('hidden', loaded || !isAdmin);
-      banner.textContent = message || '正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。';
+      banner.classList.toggle('hidden', !isAdmin);
+      banner.classList.toggle('border-[#D8CEBE]', !loaded);
+      banner.classList.toggle('bg-[#FFF8E8]', !loaded);
+      banner.classList.toggle('text-[#7A5B22]', !loaded);
+      banner.classList.toggle('border-[#B8D5C3]', loaded);
+      banner.classList.toggle('bg-[#EDF7F0]', loaded);
+      banner.classList.toggle('text-[#2C5E43]', loaded);
+      banner.textContent = message || (loaded
+        ? '正式資料已讀取完成，現在可以修改或儲存。'
+        : '正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。');
     }
 
     function markAdminChangesUnsaved() {
