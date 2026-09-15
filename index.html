@@ -2971,6 +2971,37 @@
         : '正在從正式資料庫讀取目前學期資料，請稍候；完成前不能修改或儲存。');
     }
 
+    function decodeFirestoreRestValue(value) {
+      if (!value || typeof value !== 'object') return null;
+      if (Object.prototype.hasOwnProperty.call(value, 'nullValue')) return null;
+      if (Object.prototype.hasOwnProperty.call(value, 'stringValue')) return value.stringValue;
+      if (Object.prototype.hasOwnProperty.call(value, 'booleanValue')) return value.booleanValue;
+      if (Object.prototype.hasOwnProperty.call(value, 'integerValue')) return Number(value.integerValue);
+      if (Object.prototype.hasOwnProperty.call(value, 'doubleValue')) return value.doubleValue;
+      if (Object.prototype.hasOwnProperty.call(value, 'timestampValue')) return value.timestampValue;
+      if (Object.prototype.hasOwnProperty.call(value, 'arrayValue')) {
+        return (value.arrayValue.values || []).map(decodeFirestoreRestValue);
+      }
+      if (Object.prototype.hasOwnProperty.call(value, 'mapValue')) {
+        return decodeFirestoreRestFields(value.mapValue.fields || {});
+      }
+      return null;
+    }
+
+    function decodeFirestoreRestFields(fields) {
+      return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decodeFirestoreRestValue(value)]));
+    }
+
+    async function fetchSemesterFromFirestoreRest(semesterId) {
+      const token = await currentUser?.getIdToken();
+      if (!token) throw new Error('找不到目前登入的 Firebase 身分。');
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents/semesters/${encodeURIComponent(semesterId)}`;
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error(`Firestore REST 讀取失敗（HTTP ${response.status}）。`);
+      const document = await response.json();
+      return decodeFirestoreRestFields(document.fields || {});
+    }
+
     function markAdminChangesUnsaved() {
       if (!isAdmin) return;
       hasUnsavedAdminChanges = true;
@@ -3645,6 +3676,7 @@
       const semesterId = currentSemester;
       setAdminCloudDataLoaded(false);
       setCloudSyncStatus('waiting');
+      let restFallbackTimer = null;
       const loadTimeout = setTimeout(() => {
         if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
         setCloudSyncStatus('failed');
@@ -3661,7 +3693,12 @@
         }
         if (hasUnsavedAdminChanges) return;
         if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
-        const data = snapshot.data();
+        applyServerData(snapshot.data());
+      };
+
+      const applyServerData = data => {
+        if (requestId !== adminCloudLoadRequestId || semesterId !== currentSemester) return;
+        if (hasUnsavedAdminChanges || pendingCloudSemesterSaves > 0) return;
         booksData = Array.isArray(data.booksData) ? data.booksData : booksData;
         gradeCounts = data.gradeCounts || gradeCounts;
         rotationDates = data.rotationDates || rotationDates;
@@ -3675,17 +3712,16 @@
         recomputeChainFlow('7');
         recomputeChainFlow('8');
         clearTimeout(loadTimeout);
+        if (restFallbackTimer) clearTimeout(restFallbackTimer);
         setAdminCloudDataLoaded(true);
         if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
         renderAllViews();
       };
 
-      const handleLoadError = error => {
+      const noteSdkLoadError = error => {
         if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
-        clearTimeout(loadTimeout);
-        setCloudSyncStatus('failed');
-        setAdminCloudDataLoaded(false, '無法讀取正式 Firestore 資料，為避免覆寫資料，已禁止修改與儲存。請重新整理後登入。');
-        console.error('讀取學期資料失敗：', error);
+        setAdminCloudDataLoaded(false, 'Firestore 即時連線暫時失敗，正在改用安全備援讀取正式資料；完成前不能修改或儲存。');
+        console.warn('Firestore 即時讀取失敗，將嘗試 REST 備援：', error);
       };
 
       cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot({ includeMetadataChanges: true }, snapshot => {
@@ -3696,11 +3732,21 @@
           return;
         }
         applyServerSnapshot(snapshot);
-      }, handleLoadError);
+      }, noteSdkLoadError);
 
       // 部分校園或家用網路會讓即時監聽的長連線卡住；額外直接向伺服器讀取一次，
       // 讓本機預覽仍可取得已驗證的正式資料，或明確回報錯誤。
-      getSemesterDocument().get({ source: 'server' }).then(applyServerSnapshot).catch(handleLoadError);
+      getSemesterDocument().get({ source: 'server' }).then(applyServerSnapshot).catch(noteSdkLoadError);
+
+      restFallbackTimer = setTimeout(async () => {
+        if (requestId !== adminCloudLoadRequestId || adminCloudDataLoaded) return;
+        try {
+          const data = await fetchSemesterFromFirestoreRest(semesterId);
+          applyServerData(data);
+        } catch (error) {
+          console.error('Firestore REST 備援讀取失敗：', error);
+        }
+      }, 3000);
 
       if (cloudSelectionUnsubscribe) cloudSelectionUnsubscribe();
       cloudSelectionUnsubscribe = firestoreDb.collection('selections').where('semesterId', '==', currentSemester).onSnapshot(snapshot => {
