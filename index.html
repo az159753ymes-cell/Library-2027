@@ -1967,9 +1967,15 @@
       }
       #tab-rotation {
         display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       #rotation-print-container {
         display: block !important;
+        width: 194mm !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
       .library-main {
         margin-left: 0 !important;
@@ -1978,6 +1984,10 @@
         max-width: 100% !important;
       }
       .print-page {
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 194mm !important;
+        box-sizing: border-box !important;
         page-break-after: always !important;
         break-after: page !important;
         page-break-inside: avoid !important;
@@ -1991,10 +2001,23 @@
         border-collapse: collapse !important;
         width: 100% !important;
         table-layout: fixed !important;
+        min-width: 0 !important;
       }
       .print-table th, .print-table td {
         border: 1px solid #4b5563 !important;
         padding: 6px 6px !important;
+      }
+      /* 保留字級，以收緊垂直留白容納每年級 12 班；不縮放整張報表。 */
+      .print-table td {
+        padding-top: 3px !important;
+        padding-bottom: 3px !important;
+      }
+      .print-table td > .flex {
+        padding-top: 1px !important;
+        padding-bottom: 1px !important;
+      }
+      .print-table td > .space-y-0\.5 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 1px !important;
       }
       .print-table th {
         background-color: #f3f4f6 !important;
@@ -2186,7 +2209,7 @@
 
     <!-- 底部系統版本標示 -->
     <div class="p-4 text-xs text-[#5A786B] text-center font-medium">
-      圖書館系統 v4.1.65
+      圖書館系統 v4.1.66
     </div>
   </aside>
 
@@ -4458,6 +4481,7 @@
             switchSemester(sem.id);
             renderSemesterManagerList();
           }
+          closeSemesterManagerModal();
         };
 
         item.innerHTML = `
@@ -4690,17 +4714,15 @@
       if (inlineEditingSlot) {
         commitInlineCell();
       }
-      const shouldReopenCatalogEditor = resetCatalogEditorForSemesterSwitch();
+      resetCatalogEditorForSemesterSwitch();
       currentSemester = newSem;
       if (isHistoricalRotationSemester()) {
         closeCombinedSettingsModal();
-        closeSemesterManagerModal();
       }
       loadAllData();
       renderSemesterSelectOptions();
       switchGrade('7');
       renderTable();
-      if (shouldReopenCatalogEditor) openFreshCatalogFormAfterSemesterSwitch();
       renderRotationTable();
       if (cloudReady) bindSemesterCloudListener();
       renderSelectionView();
@@ -4711,25 +4733,12 @@
       selectedBookId = null;
       const formCard = document.getElementById('form-card');
       const form = document.getElementById('book-form');
-      const wasOpen = Boolean(formCard && !formCard.classList.contains('hidden'));
       if (form) form.reset();
       document.getElementById('inputId').value = '';
-      if (!formCard) return false;
+      if (!formCard) return;
       formCard.style.height = '';
       formCard.classList.add('hidden');
       restoreCatalogFormToColumn();
-      return wasOpen;
-    }
-
-    // 等同按一次「新增書箱」，但不搶走焦點或開啟行動裝置鍵盤。
-    function openFreshCatalogFormAfterSemesterSwitch() {
-      const formCard = document.getElementById('form-card');
-      formCard.className = 'book-form-add p-6 rounded-2xl';
-      formCard.style.height = '';
-      document.getElementById('book-form').reset();
-      document.getElementById('inputId').value = '';
-      document.getElementById('delete-btn').classList.add('hidden');
-      renderTable();
     }
 
     // 清冊為共用快取；其他設定仍依目前學期讀取。
@@ -4988,7 +4997,7 @@
 
       const selectionTitle = isAdminOverview ? '教師選書' : `${teacherClassCode}書箱選擇`;
       const pageTitle = document.getElementById('page-header-title');
-      if (pageTitle) pageTitle.textContent = selectionTitle;
+      if (pageTitle && currentActiveTab === 'selection') pageTitle.textContent = selectionTitle;
       const periodTitles = isAdminOverview ? ['第一次', '第二次', '第三次'] : periods.map(period => period.label);
       head.innerHTML = `<tr class="bg-[#6F8578] text-white"><th class="w-[8%] px-3 py-4 text-center text-base lg:text-lg font-extrabold whitespace-nowrap">書箱編號</th><th class="w-[22%] px-4 py-4 text-base lg:text-lg font-extrabold">書箱名稱</th><th class="w-[8%] px-3 py-4 text-center text-base lg:text-lg font-extrabold whitespace-nowrap">書箱總數</th>${periods.map((period, index) => `<th class="w-[20.66%] px-4 py-3 text-center text-base lg:text-lg"><div class="font-extrabold whitespace-nowrap">${periodTitles[index]} <span class="text-xs lg:text-sm font-semibold text-white/85">（${getSelectionPeriodLabel(period)}）</span></div></th>`).join('')}</tr>`;
       if (desktopSummary && !useMobileTeacherCards && !isAdminOverview) {
@@ -5251,6 +5260,7 @@
     // 左側側邊欄 頁籤切換邏輯
     function switchTab(tabName) {
       if (!isAdmin && tabName !== 'selection') tabName = 'selection';
+      if (isAdmin && currentActiveTab === 'catalog' && tabName !== 'catalog') closeForm();
       const leavingHistoricalRotation = currentActiveTab === 'rotation'
         && tabName !== 'rotation' && isHistoricalRotationSemester();
       if (isAdmin && (tabName === 'selection' || leavingHistoricalRotation)) {
@@ -7266,8 +7276,23 @@
       mobilePrintPreviewTrigger = null;
     }
 
+    function resetPrintPageSettings() {
+      document.body.classList.remove('catalog-print-mode');
+      document.getElementById('catalog-print-page-style')?.remove();
+      document.getElementById('rotation-print-page-style')?.remove();
+    }
+
+    function prepareRotationPrintLayout() {
+      resetPrintPageSettings();
+      const pageStyle = document.createElement('style');
+      pageStyle.id = 'rotation-print-page-style';
+      pageStyle.textContent = '@media print { @page { size: A4 portrait; margin: 8mm; } }';
+      document.head.appendChild(pageStyle);
+    }
+
     function printCatalogPDF() {
       if (openMobilePrintPreview('catalog')) return;
+      resetPrintPageSettings();
       renderCatalogPrintView();
       document.body.classList.add('catalog-print-mode');
 
@@ -7277,20 +7302,30 @@
       document.head.appendChild(pageStyle);
 
       isPrintingTriggered = true;
-      setTimeout(() => window.print(), 100);
+      setTimeout(() => {
+        try {
+          window.print();
+        } finally {
+          resetPrintPageSettings();
+          isPrintingTriggered = false;
+        }
+      }, 100);
     }
 
     // 列印 PDF 功能（班際輪換：A4 直向）
     let isPrintingTriggered = false;
     function printRotationPDF() {
       if (openMobilePrintPreview('rotation')) return;
+      prepareRotationPrintLayout();
       renderPrintView();
       isPrintingTriggered = true;
       setTimeout(() => {
-        window.print();
-        setTimeout(() => {
+        try {
+          window.print();
+        } finally {
+          resetPrintPageSettings();
           isPrintingTriggered = false;
-        }, 800);
+        }
       }, 100);
     }
 
@@ -7299,13 +7334,13 @@
       if (document.body.classList.contains('catalog-print-mode')) {
         renderCatalogPrintView();
       } else if (!isPrintingTriggered) {
+        prepareRotationPrintLayout();
         renderPrintView();
       }
     });
 
     window.addEventListener('afterprint', () => {
-      document.body.classList.remove('catalog-print-mode');
-      document.getElementById('catalog-print-page-style')?.remove();
+      resetPrintPageSettings();
       isPrintingTriggered = false;
     });
 
