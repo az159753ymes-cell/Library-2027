@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <link rel="preload" as="font" href="assets/the-peak-font-beta-v0-102.ttf" type="font/ttf" crossorigin>
   <link rel="preload" as="image" href="assets/mobile-login-intro-combined-v1.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/auth-error-reminder-handlettered-v5.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
@@ -59,7 +60,7 @@
     @font-face {
       font-family: 'The Peak Beta';
       src: url('assets/the-peak-font-beta-v0-102.ttf') format('truetype');
-      font-display: swap;
+      font-display: block;
     }
 
     :root {
@@ -393,6 +394,12 @@
     body.admin-confirmation-mode #app-main > div {
       width: 100%;
       max-width: none;
+    }
+
+    /* 管理員確認資料與字型尚未完成時保持留白，避免手機先顯示暫態舊摘要或替代字型。 */
+    body.admin-confirmation-pending .admin-confirmation-card,
+    body.admin-confirmation-pending #home-confirmation-action-dock {
+      visibility: hidden;
     }
 
     .admin-confirmation-stage {
@@ -2504,6 +2511,7 @@
           <div id="semester-merge-panel" class="mt-3 hidden">
             <div id="semester-merge-rows" class="space-y-2"></div>
           </div>
+          <p id="admin-confirmation-load-error" class="hidden mt-3 rounded-xl border border-[#E9B9A8] bg-[#FFF5F0] px-4 py-3 font-bold text-[#994A34]" role="alert"></p>
         </section>
         <div id="home-confirmation-action-dock" aria-label="確認頁操作">
           <button id="home-apply-catalog-merge-btn" type="button" onclick="applyCatalogMerge()" class="hidden rounded-xl bg-[#2C5E43] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#224833]">確認合併至目前畫面</button>
@@ -3127,6 +3135,9 @@
     let teacherSelectionRecordsLoaded = false;
     let teacherSelectionRecordsLoadError = '';
     let teacherSelectionWindowLoadTimer = null;
+    // Safari 手機須等確認頁字型完成，才可顯示正式摘要，避免一般字體閃現後跳成手寫字型。
+    let adminConfirmationFontLoaded = !(document.fonts && typeof document.fonts.load === 'function');
+    let adminConfirmationFontLoadError = '';
     let activeAuthUid = null;
     let teacherClassCode = '';
     let teacherAllowedClassCodes = [];
@@ -3328,6 +3339,8 @@
       }
       const adminConfirmationGate = isAdmin && !adminDataConfirmationComplete;
       document.body?.classList?.toggle('admin-confirmation-mode', adminConfirmationGate && currentActiveTab === 'home');
+      document.body?.classList?.toggle('admin-confirmation-pending', adminConfirmationGate
+        && currentActiveTab === 'home' && !isAdminConfirmationContentReady());
       if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
       if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
       if (selectionBtn) selectionBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
@@ -4545,6 +4558,46 @@
         && !teacherSelectionRecordsLoadError;
     }
 
+    function isAdminConfirmationDataSettled() {
+      const terminalState = state => ['ready', 'review', 'missing', 'failed'].includes(state);
+      return terminalState(catalogLoadState)
+        && terminalState(adminSettingsLoadState)
+        && terminalState(semesterLoadState)
+        && (teacherSelectionWindowLoaded || Boolean(teacherSelectionWindowLoadError))
+        && (teacherSelectionRecordsLoaded || Boolean(teacherSelectionRecordsLoadError));
+    }
+
+    function isAdminConfirmationContentReady() {
+      return isAdminConfirmationDataSettled()
+        && (adminConfirmationFontLoaded || Boolean(adminConfirmationFontLoadError));
+    }
+
+    async function prepareAdminConfirmationFont(userId) {
+      adminConfirmationFontLoaded = !(document.fonts && typeof document.fonts.load === 'function');
+      adminConfirmationFontLoadError = '';
+      if (adminConfirmationFontLoaded) return;
+      let fontTimeout = null;
+      try {
+        const timeout = new Promise((_, reject) => {
+          fontTimeout = setTimeout(() => reject(new Error('確認頁字型載入逾時')), 8000);
+        });
+        await Promise.race([
+          Promise.all([document.fonts.load('700 21px "The Peak Beta"'), document.fonts.ready]),
+          timeout
+        ]);
+        if (activeAuthUid !== userId || !isAdmin) return;
+        adminConfirmationFontLoaded = true;
+      } catch (error) {
+        if (activeAuthUid !== userId || !isAdmin) return;
+        adminConfirmationFontLoadError = '確認頁字型未能載入。請確認網路後重新整理；系統不會顯示暫態舊資料。';
+        console.error('確認頁字型載入失敗：', error);
+      } finally {
+        if (fontTimeout) clearTimeout(fontTimeout);
+        renderCatalogSource();
+        syncRoleUi();
+      }
+    }
+
     function isAdminDataConfirmationReady() {
       return isAdminDataSourcesConfirmed() && !hasUnsavedAdminChanges;
     }
@@ -4664,9 +4717,26 @@
       const panel = document.getElementById('catalog-merge-panel');
       const rows = document.getElementById('catalog-merge-rows');
       const apply = document.getElementById('home-apply-catalog-merge-btn');
+      const dock = document.getElementById('home-confirmation-action-dock');
+      const loadError = document.getElementById('admin-confirmation-load-error');
       if (!status || !summary || !updatedAt || !semesterSummary || !detail || !panel || !rows) return;
       if (!isAdmin) {
         apply?.classList.add('hidden');
+        return;
+      }
+      const presentationPending = !adminDataConfirmationComplete
+        && currentActiveTab === 'home' && !isAdminConfirmationContentReady();
+      document.body?.classList?.toggle('admin-confirmation-pending', presentationPending);
+      if (presentationPending) {
+        [status, summary, updatedAt, semesterSummary, detail].forEach(element => {
+          element.textContent = '';
+          element.innerHTML = '';
+          element.classList.add('hidden');
+        });
+        panel.classList.add('hidden');
+        sourcePanel?.classList.add('hidden');
+        dock?.classList.add('hidden');
+        loadError?.classList.add('hidden');
         return;
       }
       const labels = {
@@ -4708,14 +4778,16 @@
         ? lastBookTotal
         : (Number.isFinite(lastBookMaxNumber) ? Math.max(0, lastBookMaxNumber - lastBookMissingCount) : 0);
       const officialCatalogSummary = `正式清冊 ${officialBooks.length} 本，最後編號 ${lastCode}（缺號 ${lastBookMissingCount}，共 ${lastBookAvailableCount} 本）。`;
-      const serverDetail = catalogServerBooks && !catalogDocumentMissing
-        ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}${teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError ? '；教師選書設定已確認' : ''}。`
-        : '';
       const officialDataConfirmed = isAdminDataConfirmationReady();
       const isCatalogReview = catalogLoadState === 'review';
       const isSemesterReview = semesterLoadState === 'review';
       // 單獨處理學期差異時，直接顯示每個實際問題的卡片，不再加上資料來源提示卡。
       sourcePanel?.classList.toggle('hidden', isSemesterReview && !isCatalogReview);
+      dock?.classList.remove('hidden');
+      if (loadError) {
+        loadError.textContent = adminConfirmationFontLoadError;
+        loadError.classList.toggle('hidden', !adminConfirmationFontLoadError);
+      }
       const canShowOfficialSummary = Boolean(catalogServerBooks && !catalogDocumentMissing);
       let showDetail = false;
       if (officialDataConfirmed) {
@@ -4761,8 +4833,8 @@
         updatedAt.classList.add('hidden');
         semesterSummary.textContent = '';
         semesterSummary.classList.add('hidden');
-        detail.textContent = serverDetail;
-        showDetail = Boolean(serverDetail);
+        detail.textContent = '';
+        showDetail = false;
       }
       detail.classList.toggle('hidden', !showDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
@@ -5111,6 +5183,8 @@
       teacherSelectionWindowLoadError = '';
       teacherSelectionRecordsLoaded = false;
       teacherSelectionRecordsLoadError = '';
+      adminConfirmationFontLoaded = !(document.fonts && typeof document.fonts.load === 'function');
+      adminConfirmationFontLoadError = '';
       currentUser = user;
       teacherClassCode = '';
       teacherAllowedClassCodes = [];
@@ -5130,6 +5204,7 @@
       setAuthMessage('正在確認您的使用權限⋯');
 
       isAdmin = isAdministratorUser(user);
+      if (isAdmin) prepareAdminConfirmationFont(user.uid);
       // 不讓首頁在圖片仍分區解碼時露出；下載或解碼失敗仍會繼續進入系統。
       await homeIllustrationsReady;
       document.getElementById('auth-gate').classList.add('hidden');

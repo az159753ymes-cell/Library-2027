@@ -51,11 +51,14 @@ async function run() {
   const app = createApp();
   app.sandbox.old = old;
   app.sandbox.local = local;
-  app.run('booksData = local; catalogLocalBooks = local; catalogHasLocalCache = true; catalogLoadState = "loading"; cloudSyncStatus = "idle";');
+  app.run('booksData = local; catalogLocalBooks = local; catalogHasLocalCache = true; catalogLoadState = "loading"; cloudSyncStatus = "idle"; currentActiveTab = "home"; adminConfirmationFontLoaded = true;');
   assert.match(app.run('getCloudSyncState().text'), /尚未取得正式清冊/);
 
   app.run('applyCloudCatalogSnapshot({ exists: true, metadata: { fromCache: false }, data: () => ({ booksData: old }) });');
   assert.equal(app.run('catalogLoadState'), 'review');
+  assert.equal(app.elements.get('catalog-source-status').textContent, '', 'the confirmation page stays blank until every source is ready');
+  assert.equal(app.elements.get('catalog-source-summary').textContent, '', 'a partial snapshot must not show the old catalog summary');
+  app.run('adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; renderCatalogSource();');
   assert.match(app.elements.get('catalog-source-status').textContent, /目前書箱清冊與 Firestore 正式資料不同/);
   assert.match(app.elements.get('catalog-source-summary').textContent, /正式清冊 1 本，最後編號 99/);
   assert.match(app.elements.get('catalog-merge-rows').innerHTML, /書箱999號/);
@@ -74,6 +77,13 @@ async function run() {
   assert.match(confirmed.elements.get('catalog-source-updated-at').innerHTML, /catalog-confirmation-upload-time/);
   assert.equal(confirmed.elements.get('catalog-source-semester-summary').textContent, '④ 學期設定已確認（班級、輪換安排）。');
   assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
+
+  const fontPending = createApp();
+  fontPending.sandbox.old = old;
+  fontPending.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; currentActiveTab = "home"; adminConfirmationFontLoaded = false; renderCatalogSource();');
+  assert.equal(fontPending.elements.get('catalog-source-status').textContent, '', 'the confirmation page must stay blank while its font is loading');
+  fontPending.run('adminConfirmationFontLoaded = true; renderCatalogSource();');
+  assert.equal(fontPending.elements.get('catalog-source-status').textContent, '① 已從 Firestore 伺服器讀取正式清冊。');
 
   const lastBoxOnly = createApp();
   lastBoxOnly.sandbox.multiBoxCatalog = [
