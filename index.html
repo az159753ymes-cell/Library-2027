@@ -19,7 +19,8 @@
   <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/wugao-library-banner-v5-1500.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/sidebar-student-presenting-transparent-v3-440.webp" type="image/webp" fetchpriority="high">
-  <link rel="preload" as="image" href="assets/admin-confirmation-frame-watercolor-v1.png" type="image/png" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/admin-confirmation-corner-bottom-left-v1.png" type="image/png" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/admin-confirmation-corner-top-right-v1.png" type="image/png" fetchpriority="high">
   <script>
     tailwind.config = {
       theme: {
@@ -55,6 +56,12 @@
     }
   </script>
   <style>
+    @font-face {
+      font-family: 'The Peak Beta';
+      src: url('assets/the-peak-font-beta-v0-102.ttf') format('truetype');
+      font-display: swap;
+    }
+
     :root {
       --sage-sidebar: #DCE5C9;
       --sage-main: #6F8175;
@@ -397,17 +404,35 @@
       align-items: center;
       justify-content: center;
       padding: clamp(1.5rem, 4vw, 4rem);
+      padding-bottom: clamp(9rem, 18vh, 14rem);
     }
 
-    .admin-confirmation-frame {
+    .admin-confirmation-corner-art {
       position: fixed;
       inset: 0;
       z-index: -1;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
       pointer-events: none;
       user-select: none;
+    }
+
+    .admin-confirmation-corner-art img {
+      position: absolute;
+      display: block;
+      height: auto;
+      max-height: 68dvh;
+      object-fit: contain;
+    }
+
+    .admin-confirmation-corner-art__bottom-left {
+      bottom: 0;
+      left: clamp(-24px, -1vw, -8px);
+      width: clamp(260px, 28vw, 500px);
+    }
+
+    .admin-confirmation-corner-art__top-right {
+      top: 0;
+      right: 0;
+      width: clamp(220px, 24vw, 420px);
     }
 
     .admin-confirmation-card {
@@ -419,30 +444,58 @@
       text-align: center;
     }
 
-    .admin-confirmation-wordmark {
-      display: block;
-      width: min(100%, 220px);
-      height: auto;
-      margin: 0 auto clamp(1.25rem, 3vw, 1.75rem);
-      filter: drop-shadow(0 2px 1px rgba(91, 55, 40, .08));
-    }
-
     #home-confirm-save-host {
       position: relative;
     }
 
+    #home-confirmation-action-dock {
+      position: fixed;
+      right: clamp(1rem, 3vw, 2.5rem);
+      bottom: clamp(1rem, 3vw, 2.5rem);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: .75rem;
+      max-width: calc(100vw - 2rem);
+      pointer-events: none;
+    }
+
+    #home-confirmation-action-dock > * {
+      pointer-events: auto;
+    }
+
+    #home-confirmation-action-dock button {
+      max-width: 100%;
+    }
+
     body.admin-confirmation-mode #catalog-source-panel {
-      border: 0 !important;
-      background: transparent !important;
-      padding: 0 !important;
-      text-align: center;
+      border: 1px solid #D8CEBE !important;
+      border-radius: .75rem;
+      background: rgba(255, 253, 249, .92) !important;
+      box-shadow: 0 8px 20px rgba(69, 55, 42, .08);
+      padding: 1rem !important;
+      text-align: left;
     }
 
     body.admin-confirmation-mode #catalog-source-status,
     body.admin-confirmation-mode #catalog-source-summary,
+    body.admin-confirmation-mode #catalog-source-semester-summary,
     body.admin-confirmation-mode #catalog-source-detail {
-      text-align: center;
+      text-align: left;
+      color: #52796F !important;
+      font-family: 'The Peak Beta', serif;
+      font-size: 21px;
+      font-weight: 700 !important;
+      line-height: 1.7;
       text-shadow: 0 1px 0 rgba(255, 253, 249, .78);
+    }
+
+    body.admin-confirmation-mode .catalog-confirmation-number {
+      display: inline-block;
+      font-size: .76em;
+      line-height: 1;
+      vertical-align: .08em;
     }
 
     body.admin-confirmation-mode #catalog-merge-panel:not(.hidden),
@@ -457,7 +510,8 @@
     }
 
     #home-confirm-save-host .admin-logo-save-popover {
-      top: calc(100% + 12px);
+      top: auto;
+      bottom: calc(100% + 12px);
       left: 50%;
       width: min(330px, calc(100vw - 48px));
       transform: translateX(-50%);
@@ -543,6 +597,10 @@
     }
 
     @media (max-width: 760px) {
+      .admin-confirmation-corner-art {
+        display: none;
+      }
+
       .desktop-selection-summary {
         display: none !important;
       }
@@ -661,15 +719,25 @@
       .admin-confirmation-stage {
         min-height: calc(100dvh - 48px);
         padding: 24px 0;
+        padding-bottom: calc(8rem + env(safe-area-inset-bottom));
       }
 
-      .admin-confirmation-frame {
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        transform: none;
-        object-fit: cover;
-        opacity: .64;
+      .admin-confirmation-corner-art img {
+        max-height: 52dvh;
+      }
+
+      .admin-confirmation-corner-art__bottom-left {
+        width: min(58vw, 280px);
+      }
+
+      .admin-confirmation-corner-art__top-right {
+        width: min(40vw, 200px);
+      }
+
+      #home-confirmation-action-dock {
+        right: max(1rem, env(safe-area-inset-right));
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        gap: .625rem;
       }
 
       .admin-confirmation-card {
@@ -2413,31 +2481,34 @@
 
       <!-- 管理員資料確認關卡：先確認本機與正式資料，再進入工作頁面。 -->
       <div id="tab-home" class="admin-confirmation-stage hidden">
-        <img src="assets/admin-confirmation-frame-watercolor-v1.png" alt="" class="admin-confirmation-frame" aria-hidden="true" decoding="async" />
+        <div class="admin-confirmation-corner-art" aria-hidden="true">
+          <img class="admin-confirmation-corner-art__bottom-left" src="assets/admin-confirmation-corner-bottom-left-v1.png" alt="" decoding="async" />
+          <img class="admin-confirmation-corner-art__top-right" src="assets/admin-confirmation-corner-top-right-v1.png" alt="" decoding="async" />
+        </div>
         <section class="admin-confirmation-card">
-          <img src="assets/library-wordmark-eucalyptus-brush-v4-600.webp" alt="LIBRARY" class="admin-confirmation-wordmark" decoding="async" />
-          <section id="catalog-source-panel" class="rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base font-semibold leading-6 text-[#52796F]" role="status" aria-live="polite">
+          <section id="catalog-source-panel" class="rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base leading-6 text-[#52796F]" role="status" aria-live="polite">
           <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
-          <p id="catalog-source-summary" class="hidden mt-1 font-extrabold text-[#2C5E43]"></p>
+          <p id="catalog-source-summary" class="hidden mt-1"></p>
+          <p id="catalog-source-semester-summary" class="hidden mt-1"></p>
           <p id="catalog-source-detail" class="mt-1"></p>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
             <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，再按下方「確認儲存」。</p>
             <div id="catalog-merge-rows" class="max-h-72 space-y-2 overflow-y-auto"></div>
-            <button type="button" onclick="applyCatalogMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認合併至目前畫面</button>
           </div>
           <div id="semester-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
             <p class="mb-2">目前學期設定與正式資料不同。請逐類選擇保留來源；完成後再按下方「確認儲存」才會發布。</p>
             <div id="semester-merge-rows" class="space-y-2"></div>
-            <button type="button" onclick="applySemesterMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認設定至目前畫面</button>
           </div>
           </section>
-          <div id="home-confirm-save-host" class="mt-5 flex justify-end">
+        </section>
+        <div id="home-confirmation-action-dock" aria-label="確認頁操作">
+          <button id="home-apply-catalog-merge-btn" type="button" onclick="applyCatalogMerge()" class="hidden rounded-xl bg-[#2C5E43] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#224833]">確認合併至目前畫面</button>
+          <button id="home-apply-semester-merge-btn" type="button" onclick="applySemesterMerge()" class="hidden rounded-xl bg-[#2C5E43] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#224833]">確認設定至目前畫面</button>
+          <div id="home-confirm-save-host">
             <button id="home-confirm-save-btn" type="button" onclick="openAdminSavePopover()" class="hidden rounded-xl bg-[#8C5A3C] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#70452C]">確認儲存</button>
           </div>
-          <div class="mt-4 flex justify-end">
-            <button id="home-enter-catalog-btn" type="button" onclick="enterAdminWorkspace()" class="hidden rounded-xl bg-[#B85E3F] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#994A34]">進入書箱清冊</button>
-          </div>
-        </section>
+          <button id="home-enter-catalog-btn" type="button" onclick="enterAdminWorkspace()" class="hidden rounded-xl bg-[#B85E3F] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#994A34]">進入書箱清冊</button>
+        </div>
       </div>
 
       <!-- 頁籤一：書箱清冊頁面 -->
@@ -3049,6 +3120,8 @@
     // 管理員必須先讀到正式選書時段，才可以覆寫它；避免尚未連線時出現「假儲存成功」。
     let teacherSelectionWindowLoaded = false;
     let teacherSelectionWindowLoadError = '';
+    let teacherSelectionRecordsLoaded = false;
+    let teacherSelectionRecordsLoadError = '';
     let teacherSelectionWindowLoadTimer = null;
     let activeAuthUid = null;
     let teacherClassCode = '';
@@ -3087,7 +3160,8 @@
     const homeIllustrationsReady = Promise.all([
       'assets/wugao-library-banner-v5-1500.webp',
       'assets/sidebar-student-presenting-transparent-v3-440.webp',
-      'assets/admin-confirmation-frame-watercolor-v1.png'
+      'assets/admin-confirmation-corner-bottom-left-v1.png',
+      'assets/admin-confirmation-corner-top-right-v1.png'
     ].map(decodeIllustration));
 
     mobileLoginIllustrationReady.then(() => {
@@ -3324,6 +3398,13 @@
       if (/resource-exhausted|quota/i.test(code)) return 'Firestore 免費額度目前不足，今天請先停止重試，待額度恢復後再儲存。';
       if (/unavailable|network/i.test(code)) return '無法連線至正式資料庫。請確認網路後再按一次儲存。';
       return String(error?.message || '請確認網路與 Firestore 狀態後，再由 LOGO 重新開啟此視窗儲存。');
+    }
+
+    function formatAdminTimestamp(value) {
+      const date = value?.toDate?.() || value;
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+      const pad = number => String(number).padStart(2, '0');
+      return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     }
 
     function renderAdminSavePopover(error = null) {
@@ -3999,7 +4080,7 @@
         }, { merge: true });
         await firestoreDb.waitForPendingWrites();
         const systemDataCatalog = await getCatalogDocument().get({ source: 'server' });
-        catalogServerSystemDataUploadedAt = systemDataCatalog.data()?.lastSystemDataUploadAt?.toDate?.()?.toLocaleString('zh-TW') || '';
+        catalogServerSystemDataUploadedAt = formatAdminTimestamp(systemDataCatalog.data()?.lastSystemDataUploadAt);
         catalogServerBooks = JSON.parse(JSON.stringify(nextBooks));
         catalogDocumentMissing = false;
         if (currentSemester === getTeacherSelectionSemesterId()) {
@@ -4232,11 +4313,21 @@
       });
 
       if (cloudSelectionUnsubscribe) cloudSelectionUnsubscribe();
+      teacherSelectionRecordsLoaded = false;
+      teacherSelectionRecordsLoadError = '';
       cloudSelectionUnsubscribe = firestoreDb.collection('selections').where('semesterId', '==', currentSemester).onSnapshot(snapshot => {
         selectionRecords = {};
         snapshot.forEach(doc => { selectionRecords[doc.id] = doc.data(); });
+        teacherSelectionRecordsLoaded = true;
+        teacherSelectionRecordsLoadError = '';
         renderSelectionView();
-      }, error => console.error('讀取選書資料失敗：', error));
+        renderCatalogSource();
+      }, error => {
+        teacherSelectionRecordsLoaded = false;
+        teacherSelectionRecordsLoadError = '無法讀取教師已選書內容。';
+        renderCatalogSource();
+        console.error('讀取選書資料失敗：', error);
+      });
 
       if (adminTeacherPortalUnsubscribe) adminTeacherPortalUnsubscribe();
       teacherSelectionWindowLoaded = false;
@@ -4314,7 +4405,9 @@
         && adminSettingsLoadState === 'ready'
         && semesterLoadState === 'ready'
         && teacherSelectionWindowLoaded
-        && !teacherSelectionWindowLoadError;
+        && !teacherSelectionWindowLoadError
+        && teacherSelectionRecordsLoaded
+        && !teacherSelectionRecordsLoadError;
     }
 
     function isAdminDataConfirmationReady() {
@@ -4341,7 +4434,8 @@
       return ['review', 'missing', 'failed'].includes(catalogLoadState)
         || ['review', 'missing', 'failed'].includes(semesterLoadState)
         || ['missing', 'failed'].includes(adminSettingsLoadState)
-        || Boolean(teacherSelectionWindowLoadError);
+        || Boolean(teacherSelectionWindowLoadError)
+        || Boolean(teacherSelectionRecordsLoadError);
     }
 
     function enforceAdminDataConfirmationGate() {
@@ -4352,14 +4446,60 @@
       return true;
     }
 
+    function describeSemesterDifference(key, value) {
+      const data = value || {};
+      if (key === 'gradeCounts') {
+        const grade7 = data.g7 ?? '未設定';
+        const grade8 = data.g8 ?? '未設定';
+        return `七年級 ${grade7} 班；八年級 ${grade8} 班`;
+      }
+      if (key === 'rotationDates') {
+        const labels = {
+          issueDate: '發書日', exchange1CheckDate: '第一次檢查日', exchange1Date: '第一次輪換日',
+          exchange2CheckDate: '第二次檢查日', exchange2Date: '第二次輪換日', returnDate: '歸還日'
+        };
+        const details = Object.entries(labels)
+          .map(([field, label]) => `${label}：${data[field] || '未設定'}`);
+        return details.join('；');
+      }
+      if (key === 'rotationSchedule') {
+        const slotLabels = { p1: '第一次', p2: '第二次', p3: '第三次' };
+        const classes = Object.keys(data).sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
+        if (!classes.length) return '尚未安排任何班級的輪換書箱';
+        return classes.map(classCode => {
+          const schedule = data[classCode] || {};
+          const slots = Object.entries(slotLabels).map(([slot, label]) => {
+            const item = schedule[slot];
+            if (!item?.code) return `${label}：未安排`;
+            const source = item.selectionSource === 'teacher' ? '（教師選書）' : '';
+            return `${label}：${item.code} 號書箱${source}`;
+          });
+          return `${classCode} 班：${slots.join('、')}`;
+        }).join('；');
+      }
+      if (key === 'grade8HistoryBooks') {
+        const classes = Object.keys(data).sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
+        if (!classes.length) return '尚無七、八年級閱讀紀錄';
+        return classes.map(classCode => {
+          const books = Array.isArray(data[classCode]) && data[classCode].length
+            ? data[classCode].map(code => `${code} 號`).join('、')
+            : '無紀錄';
+          return `${classCode} 班：${books}`;
+        }).join('；');
+      }
+      return '未設定';
+    }
+
     function renderSemesterMergePanel() {
       const panel = document.getElementById('semester-merge-panel');
       const rows = document.getElementById('semester-merge-rows');
       const enter = document.getElementById('home-enter-catalog-btn');
+      const apply = document.getElementById('home-apply-semester-merge-btn');
       if (!panel || !rows || !enter) return;
       const canEnter = isAdminDataConfirmationReady();
       enter.classList.toggle('hidden', !canEnter);
       panel.classList.toggle('hidden', semesterLoadState !== 'review');
+      apply?.classList.toggle('hidden', semesterLoadState !== 'review');
       if (semesterLoadState !== 'review') return;
       const local = semesterLocalData || buildCurrentSemesterSavePayload();
       const server = semesterServerData || {};
@@ -4371,11 +4511,11 @@
       ].filter(([key]) => JSON.stringify(local[key] || {}) !== JSON.stringify(server[key] || {}));
       rows.innerHTML = fields.map(([key, label]) => {
         const choice = semesterMergeChoices.get(key) || 'server';
-        const localSummary = JSON.stringify(local[key] || {});
-        const serverSummary = JSON.stringify(server[key] || {});
+        const localSummary = describeSemesterDifference(key, local[key]);
+        const serverSummary = describeSemesterDifference(key, server[key]);
         return `<div class="rounded-lg border border-[#E8E1D5] p-3"><span class="font-bold text-[#2C5E43]">${label}</span>
-          <span class="mt-1 block break-all text-sm font-medium">本機：${escapePrintText(localSummary)}</span>
-          <span class="block break-all text-sm font-medium">正式：${escapePrintText(serverSummary)}</span>
+          <span class="mt-1 block break-words text-sm font-medium">本機資料：${escapePrintText(localSummary)}</span>
+          <span class="block break-words text-sm font-medium">正式資料：${escapePrintText(serverSummary)}</span>
           <select data-semester-merge-key="${key}" class="mt-2 rounded border border-[#B8A894] bg-white px-2 py-1">
             <option value="server" ${choice === 'server' ? 'selected' : ''}>保留正式資料</option>
             <option value="local" ${choice === 'local' ? 'selected' : ''}>保留本機資料</option>
@@ -4416,13 +4556,24 @@
       renderCatalogSource();
     }
 
+    function setCatalogConfirmationLine(element, number, text) {
+      element.textContent = `${number} ${text}`;
+      element.innerHTML = `<span class="catalog-confirmation-number" aria-hidden="true">${number}</span> ${escapePrintText(text)}`;
+    }
+
     function renderCatalogSource() {
       const status = document.getElementById('catalog-source-status');
       const summary = document.getElementById('catalog-source-summary');
+      const semesterSummary = document.getElementById('catalog-source-semester-summary');
       const detail = document.getElementById('catalog-source-detail');
       const panel = document.getElementById('catalog-merge-panel');
       const rows = document.getElementById('catalog-merge-rows');
-      if (!status || !summary || !detail || !panel || !rows || !isAdmin) return;
+      const apply = document.getElementById('home-apply-catalog-merge-btn');
+      if (!status || !summary || !semesterSummary || !detail || !panel || !rows) return;
+      if (!isAdmin) {
+        apply?.classList.add('hidden');
+        return;
+      }
       const labels = {
         loading: '尚未從 Firestore 伺服器取得正式清冊；目前顯示本機或預設資料。',
         missing: 'Firestore 正式清冊不存在；目前顯示本機或預設資料，禁止直接覆寫。',
@@ -4442,6 +4593,10 @@
           ? '教師選書設定讀取失敗；請檢查連線與權限。'
           : !teacherSelectionWindowLoaded
           ? '已取得清冊與目前學期設定，正在確認教師選書設定。'
+          : teacherSelectionRecordsLoadError
+          ? '教師已選書內容讀取失敗；請檢查連線與權限。'
+          : !teacherSelectionRecordsLoaded
+          ? '已取得教師選書開放時段，正在確認教師已選書內容。'
           : hasUnsavedAdminChanges
           ? `已從 Firestore 伺服器讀取正式清冊；尚未儲存：${getUnsavedAdminChangeLabels().join('、')}。`
           : '已從 Firestore 伺服器讀取正式清冊。'
@@ -4453,20 +4608,25 @@
         : '';
       const officialDataConfirmed = isAdminDataConfirmationReady();
       if (officialDataConfirmed) {
-        status.textContent = '已從 Firestore 伺服器讀取正式清冊。';
-        status.className = 'font-extrabold text-[#2C5E43]';
-        summary.textContent = `正式清冊 ${catalogServerBooks.length} 本，最後編號 ${lastCode}`;
+        setCatalogConfirmationLine(status, '①', '已從 Firestore 伺服器讀取正式清冊。');
+        status.className = '';
+        setCatalogConfirmationLine(summary, '②', `清冊 ${catalogServerBooks.length} 本，編號 ${lastCode}（${catalogServerSystemDataUploadedAt || '尚無紀錄'}）`);
         summary.classList.remove('hidden');
-        detail.textContent = `更新時間 ${catalogServerSystemDataUploadedAt || '尚無紀錄'}；教師選書設定已確認。`;
+        setCatalogConfirmationLine(semesterSummary, '③', '學期設定已確認（班級、輪換安排）');
+        semesterSummary.classList.remove('hidden');
+        setCatalogConfirmationLine(detail, '④', '教師選書開放時段與選書內容已確認。');
       } else {
         status.textContent = labels[catalogLoadState] || labels.loading;
-        status.className = 'font-semibold';
+        status.className = '';
         summary.textContent = '';
         summary.classList.add('hidden');
+        semesterSummary.textContent = '';
+        semesterSummary.classList.add('hidden');
         detail.textContent = serverDetail;
       }
       detail.classList.toggle('hidden', !serverDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
+      apply?.classList.toggle('hidden', catalogLoadState !== 'review');
       renderSemesterMergePanel();
       syncHomeConfirmationSaveButton();
       if (enforceAdminDataConfirmationGate()) return;
@@ -4548,7 +4708,7 @@
         catalogDocumentMissing = false;
         const remote = snapshot.data().booksData;
         const systemDataUploadedAt = snapshot.data().lastSystemDataUploadAt;
-        catalogServerSystemDataUploadedAt = systemDataUploadedAt?.toDate?.()?.toLocaleString('zh-TW') || '';
+        catalogServerSystemDataUploadedAt = formatAdminTimestamp(systemDataUploadedAt);
         catalogServerBooks = JSON.parse(JSON.stringify(remote));
         if (hasUnsavedAdminChanges) catalogLocalBooks = JSON.parse(JSON.stringify(booksData));
         const local = catalogLocalBooks || booksData;
@@ -4611,7 +4771,7 @@
         booksData = catalog;
         catalogLocalBooks = JSON.parse(JSON.stringify(catalog));
         catalogServerBooks = JSON.parse(JSON.stringify(catalog));
-        catalogServerSystemDataUploadedAt = catalogSnapshot.data().lastSystemDataUploadAt?.toDate?.()?.toLocaleString('zh-TW') || '';
+        catalogServerSystemDataUploadedAt = formatAdminTimestamp(catalogSnapshot.data().lastSystemDataUploadAt);
         catalogDocumentMissing = false;
         catalogLoadState = 'ready';
         catalogHasLocalCache = true;
@@ -4807,6 +4967,8 @@
       adminDataConfirmationComplete = false;
       teacherSelectionWindowLoaded = false;
       teacherSelectionWindowLoadError = '';
+      teacherSelectionRecordsLoaded = false;
+      teacherSelectionRecordsLoadError = '';
       currentUser = user;
       teacherClassCode = '';
       teacherAllowedClassCodes = [];

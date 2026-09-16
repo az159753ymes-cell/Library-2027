@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$nodeCommand = Get-Command node -CommandType Application -ErrorAction Stop
+$nodeCommand = Get-Command node -CommandType Application -ErrorAction Stop | Select-Object -First 1
 $nodePath = $nodeCommand.Source
 $serverScript = Join-Path $PSScriptRoot 'local-preview-server.js'
 $chromePath = 'C:\Program Files\Google\Chrome\Application\chrome.exe'

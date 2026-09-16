@@ -66,10 +66,11 @@ async function run() {
 
   const confirmed = createApp();
   confirmed.sandbox.old = old;
-  confirmed.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; catalogServerSystemDataUploadedAt = "2026/9/16 上午10:58:39"; renderCatalogSource();');
-  assert.equal(confirmed.elements.get('catalog-source-status').textContent, '已從 Firestore 伺服器讀取正式清冊。');
-  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '正式清冊 1 本，最後編號 99');
-  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '更新時間 2026/9/16 上午10:58:39；教師選書設定已確認。');
+  confirmed.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; catalogServerSystemDataUploadedAt = "2026/9/16 上午10:58:39"; renderCatalogSource();');
+  assert.equal(confirmed.elements.get('catalog-source-status').textContent, '① 已從 Firestore 伺服器讀取正式清冊。');
+  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 清冊 1 本，編號 99（2026/9/16 上午10:58:39）');
+  assert.equal(confirmed.elements.get('catalog-source-semester-summary').textContent, '③ 學期設定已確認（班級、輪換安排）');
+  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '④ 教師選書開放時段與選書內容已確認。');
 
   confirmed.run('adminDataConfirmationComplete = true; hasUnsavedAdminChanges = true; renderCatalogSource();');
   assert.equal(confirmed.run('adminDataConfirmationComplete'), true, 'own unsaved draft must not revoke the completed gate');
