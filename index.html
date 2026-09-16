@@ -2116,20 +2116,14 @@
           <img src="assets/library-wordmark-eucalyptus-brush-v4-600.webp" alt="LIBRARY；點擊儲存並更新教師端" class="library-wordmark" decoding="async" />
         </button>
         <section id="admin-save-popover" class="admin-logo-save-popover hidden" aria-live="polite" aria-label="儲存狀態">
-          <div class="border-b border-[#E7DDD0] px-5 py-4">
-            <div>
-              <h2 id="admin-save-popover-title" class="text-lg font-extrabold text-[#2C5E43]">儲存目前資料</h2>
-              <p id="admin-save-popover-status" class="mt-1 text-sm font-semibold text-[#52796F]">目前資料已儲存</p>
-            </div>
-          </div>
           <div class="px-5 py-4">
-            <p id="admin-save-popover-message" class="text-sm leading-6 text-[#52796F]"></p>
+            <p id="admin-save-popover-status" class="text-sm font-extrabold text-[#2C5E43]">資料已儲存，教師端已更新</p>
+            <p id="admin-save-popover-message" class="mt-2 text-sm leading-6 text-[#52796F]"></p>
             <p id="admin-save-popover-error" class="hidden mt-3 rounded-lg bg-[#FDECE7] px-3 py-2 text-sm leading-5 text-[#A53F25]"></p>
           </div>
           <div id="admin-save-popover-actions" class="flex justify-end gap-2 border-t border-[#E7DDD0] px-5 py-4">
-            <button type="button" data-local-catalog-backup onclick="downloadLocalCatalogBackup()" class="mr-auto rounded-xl border border-[#B8A894] bg-white px-3 py-2 text-sm font-bold text-[#52796F]">備份本機清冊</button>
-            <button id="admin-save-popover-cancel" type="button" onclick="closeAdminSavePopover()"
-              class="rounded-xl border border-[#B8A894] bg-white px-4 py-2 text-sm font-bold text-[#52796F] transition hover:bg-[#F5EFEA]">取消</button>
+            <button id="admin-save-popover-discard" type="button" onclick="discardLocalAdminDrafts()"
+              class="rounded-xl border border-[#B7791F] bg-white px-4 py-2 text-sm font-bold text-[#8C5A3C] transition hover:bg-[#FFF8EC]">放棄本機草稿，採用雲端</button>
             <button id="admin-save-popover-confirm" type="button" onclick="confirmAdminSave()"
               class="rounded-xl bg-[#8C5A3C] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#70452C]">確認儲存</button>
           </div>
@@ -2303,7 +2297,6 @@
           <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
           <div class="mt-2 flex flex-wrap gap-2">
             <button type="button" onclick="refreshCatalogFromServer()" class="rounded-lg border border-[#B8A894] px-3 py-1.5">重新讀取正式清冊</button>
-            <button type="button" data-local-catalog-backup onclick="downloadLocalCatalogBackup()" class="rounded-lg border border-[#B8A894] px-3 py-1.5">下載本機清冊備份</button>
             <button id="discard-local-admin-drafts" type="button" onclick="discardLocalAdminDrafts()" class="hidden rounded-lg border border-[#B7791F] px-3 py-1.5 text-[#8C5A3C]">放棄本機草稿，採用雲端資料</button>
           </div>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
@@ -3185,22 +3178,26 @@
     }
 
     function renderAdminSavePopover(error = null) {
-      const title = document.getElementById('admin-save-popover-title');
       const status = document.getElementById('admin-save-popover-status');
       const message = document.getElementById('admin-save-popover-message');
       const errorBox = document.getElementById('admin-save-popover-error');
       const confirm = document.getElementById('admin-save-popover-confirm');
-      const cancel = document.getElementById('admin-save-popover-cancel');
-      if (!title || !status || !message || !confirm || !cancel) return;
+      const discard = document.getElementById('admin-save-popover-discard');
+      const actions = document.getElementById('admin-save-popover-actions');
+      if (!status || !message || !confirm || !discard || !actions) return;
 
       const state = getCloudSyncState();
       const isSaving = pendingCloudSemesterSaves > 0;
       const hasPendingChanges = hasUnsavedAdminChanges;
       const canSave = catalogLoadState === 'ready' && adminSettingsLoadState === 'ready';
       const savedHistoricalSemester = cloudSyncStatus === 'saved' && currentSemester !== getTeacherSelectionSemesterId();
-      title.textContent = isSaving ? '正在儲存資料' : (hasPendingChanges ? '儲存目前資料' : '查看資料來源與儲存狀態');
-      status.textContent = savedHistoricalSemester ? '資料已儲存' : state.text;
-      status.className = `mt-1 text-sm font-semibold ${state.className}`;
+      const isUnsaved = hasPendingChanges && !isSaving;
+      status.textContent = isSaving
+        ? '正在儲存資料，教師端正在更新'
+        : isUnsaved
+          ? '資料未儲存，教師端未更新'
+          : (savedHistoricalSemester ? '資料已儲存' : '資料已儲存，教師端已更新');
+      status.className = `text-sm font-extrabold ${isUnsaved || isSaving ? 'text-[#B7791F]' : 'text-[#2C9B57]'}`;
       message.textContent = isSaving
         ? '正在將清冊與學期資料寫入正式資料庫，並從伺服器核對教師端書目。請等待確認結果。'
           : !canSave
@@ -3210,9 +3207,11 @@
           : savedHistoricalSemester
             ? '目前學期資料已儲存。這不是教師選書的最新學期，因此教師端不會變更。'
             : '目前學期沒有尚未儲存的修改。此時僅查看狀態，不會寫入 Firestore。';
-      confirm.classList.toggle('hidden', !hasPendingChanges || isSaving || !canSave);
-      cancel.textContent = hasPendingChanges && !isSaving ? '取消' : '關閉';
-      cancel.disabled = isSaving;
+      const showActions = hasPendingChanges && !isSaving && canSave;
+      actions.classList.toggle('hidden', !showActions);
+      confirm.classList.toggle('hidden', !showActions);
+      discard.classList.toggle('hidden', !showActions);
+      discard.disabled = !showActions;
       if (error) {
         errorBox.textContent = getReadableCloudError(error);
         errorBox.classList.remove('hidden');
@@ -4121,10 +4120,6 @@
         ? ` 正式清冊 ${catalogServerBooks.length} 本，最後編號 ${lastCode}${catalogServerUpdatedAt ? `，更新時間 ${catalogServerUpdatedAt}` : ''}。`
         : '';
       status.textContent = (labels[catalogLoadState] || labels.loading) + serverDetail;
-      document.querySelectorAll('[data-local-catalog-backup]').forEach(button => {
-        button.disabled = !catalogHasLocalCache && !hasUnsavedAdminChanges;
-        button.classList.toggle('opacity-50', button.disabled);
-      });
       const discardDraftsButton = document.getElementById('discard-local-admin-drafts');
       if (discardDraftsButton) {
         const canDiscardDrafts = hasUnsavedAdminChanges && catalogLoadState === 'ready'
