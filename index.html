@@ -438,7 +438,7 @@
     .admin-confirmation-card {
       position: relative;
       z-index: 0;
-      width: min(100%, 640px);
+      width: min(100%, 900px);
       margin: 0 auto;
       padding: clamp(1rem, 3vw, 2rem);
       text-align: center;
@@ -480,6 +480,7 @@
 
     body.admin-confirmation-mode #catalog-source-status,
     body.admin-confirmation-mode #catalog-source-summary,
+    body.admin-confirmation-mode #catalog-source-updated-at,
     body.admin-confirmation-mode #catalog-source-semester-summary,
     body.admin-confirmation-mode #catalog-source-detail {
       text-align: left;
@@ -2489,6 +2490,7 @@
           <section id="catalog-source-panel" class="rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base leading-6 text-[#52796F]" role="status" aria-live="polite">
           <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
           <p id="catalog-source-summary" class="hidden mt-1"></p>
+          <p id="catalog-source-updated-at" class="hidden mt-1"></p>
           <p id="catalog-source-semester-summary" class="hidden mt-1"></p>
           <p id="catalog-source-detail" class="mt-1"></p>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
@@ -4261,51 +4263,48 @@
       syncRoleUi();
     }
 
+    function applySemesterCloudSnapshot(snapshot) {
+      if (!snapshot.exists) {
+        // 正式資料不存在時不可用瀏覽器快取自動建立，避免舊資料覆寫剛完成的發布或還原。
+        setCloudSyncStatus('waiting');
+        semesterLoadState = 'missing';
+        renderCatalogSource();
+        console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
+        return;
+      }
+      semesterServerData = snapshot.data();
+      // 管理員已在畫面上修改、但尚未按 LIBRARY 正式儲存時，不能讓任何
+      // 雲端回傳（例如另存教師選書開放時段所觸發的快照）蓋回舊清冊。
+      // 否則新建書箱會先在畫面消失，接著被當成舊資料發布並從教師端移除。
+      const localSemester = semesterLocalData || buildCurrentSemesterSavePayload();
+      const semesterDiffers = semesterSignature(localSemester) !== semesterSignature(semesterServerData);
+      if (hasUnsavedAdminChanges && unsavedChangesSemesterId === currentSemester) {
+        semesterLoadState = 'ready';
+        renderCatalogSource();
+        return;
+      }
+      if (semesterHasLocalCache && semesterDiffers) {
+        semesterLoadState = 'review';
+        renderCatalogSource();
+        return;
+      }
+      if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
+      const data = snapshot.data();
+      gradeCounts = data.gradeCounts || gradeCounts;
+      rotationDates = data.rotationDates || rotationDates;
+      rotationSchedule = data.rotationSchedule || rotationSchedule;
+      grade8HistoryBooks = data.grade8HistoryBooks || grade8HistoryBooks;
+      recomputeChainFlow('7');
+      recomputeChainFlow('8');
+      updateSemesterLocalCache();
+      semesterLoadState = 'ready';
+      if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
+      renderAllViews();
+    }
+
     function bindSemesterCloudListener() {
       if (cloudSemesterUnsubscribe) cloudSemesterUnsubscribe();
-      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot(snapshot => {
-        if (!snapshot.exists) {
-          // 正式資料不存在時不可用瀏覽器快取自動建立，避免舊資料覆寫剛完成的發布或還原。
-          setCloudSyncStatus('waiting');
-          semesterLoadState = 'missing';
-          renderCatalogSource();
-          console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
-          return;
-        }
-        semesterServerData = snapshot.data();
-        // 管理員已在畫面上修改、但尚未按 LIBRARY 正式儲存時，不能讓任何
-        // 雲端回傳（例如另存教師選書開放時段所觸發的快照）蓋回舊清冊。
-        // 否則新建書箱會先在畫面消失，接著被當成舊資料發布並從教師端移除。
-        const localSemester = semesterLocalData || buildCurrentSemesterSavePayload();
-        const semesterDiffers = semesterSignature(localSemester) !== semesterSignature(semesterServerData);
-        if (hasUnsavedAdminChanges && unsavedChangesSemesterId === currentSemester) {
-          semesterLoadState = 'ready';
-          renderCatalogSource();
-          return;
-        }
-        if (semesterHasLocalCache && semesterDiffers) {
-          semesterLoadState = 'review';
-          renderCatalogSource();
-          return;
-        }
-        if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
-        const data = snapshot.data();
-        gradeCounts = data.gradeCounts || gradeCounts;
-        rotationDates = data.rotationDates || rotationDates;
-        rotationSchedule = data.rotationSchedule || rotationSchedule;
-        grade8HistoryBooks = data.grade8HistoryBooks || grade8HistoryBooks;
-        localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
-        localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
-        localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
-        localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
-        semesterLocalData = buildCurrentSemesterSavePayload();
-        semesterHasLocalCache = true;
-        semesterLoadState = 'ready';
-        recomputeChainFlow('7');
-        recomputeChainFlow('8');
-        if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
-        renderAllViews();
-      }, error => {
+      cloudSemesterUnsubscribe = getSemesterDocument().onSnapshot(applySemesterCloudSnapshot, error => {
         semesterLoadState = 'failed';
         setCloudSyncStatus('failed');
         renderCatalogSource();
@@ -4392,12 +4391,54 @@
         : value && typeof value === 'object'
           ? Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize(value[key])]))
           : value;
+      const normalizeSchedule = schedule => Object.fromEntries(Object.keys(schedule || {}).sort().map(classCode => {
+        const classSchedule = schedule[classCode] || {};
+        const normalizedSlots = Object.fromEntries(['p1', 'p2', 'p3'].map(slotKey => {
+          const slot = classSchedule[slotKey];
+          if (!slot || !slot.code) return [slotKey, null];
+          return [slotKey, {
+            code: String(slot.code),
+            isSpecified: slot.isSpecified === true,
+            manualSpecified: slot.manualSpecified === true,
+            selectionSource: slot.selectionSource || '',
+            chainBridge: slot.chainBridge === true
+          }];
+        }));
+        return [classCode, normalizedSlots];
+      }));
       return JSON.stringify(normalize({
         gradeCounts: data.gradeCounts || {},
         rotationDates: data.rotationDates || {},
-        rotationSchedule: data.rotationSchedule || {},
+        // fromPlace、toPlace、dueDate 均由輪換資料即時計算，不能造成與正式資料的假差異。
+        rotationSchedule: normalizeSchedule(data.rotationSchedule),
         grade8HistoryBooks: data.grade8HistoryBooks || {}
       }));
+    }
+
+    function updateSemesterLocalCache(data = buildCurrentSemesterSavePayload()) {
+      const next = JSON.parse(JSON.stringify(data));
+      gradeCounts = next.gradeCounts || {};
+      rotationDates = next.rotationDates || {};
+      rotationSchedule = next.rotationSchedule || {};
+      grade8HistoryBooks = next.grade8HistoryBooks || {};
+      localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
+      localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
+      localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
+      localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
+      semesterLocalData = buildCurrentSemesterSavePayload();
+      semesterHasLocalCache = true;
+      return semesterLocalData;
+    }
+
+    function reconcileAdminUnsavedChanges() {
+      const catalogDiffers = Boolean(catalogServerBooks
+        && catalogSignature(booksData) !== catalogSignature(catalogServerBooks));
+      const semesterDiffers = Boolean(semesterServerData
+        && semesterSignature(buildCurrentSemesterSavePayload()) !== semesterSignature(semesterServerData));
+      hasUnsavedAdminChanges = catalogDiffers || semesterDiffers;
+      unsavedChangesSemesterId = semesterDiffers ? currentSemester : '';
+      if (!hasUnsavedAdminChanges) setCloudSyncStatus('idle');
+      return { catalogDiffers, semesterDiffers };
     }
 
     function isAdminDataSourcesConfirmed() {
@@ -4533,8 +4574,10 @@
       document.querySelectorAll('[data-semester-merge-key]').forEach(select => {
         semesterMergeChoices.set(select.dataset.semesterMergeKey, select.value);
       });
+      const semesterFields = ['gradeCounts', 'rotationDates', 'rotationSchedule', 'grade8HistoryBooks'];
       const merged = {};
-      ['gradeCounts', 'rotationDates', 'rotationSchedule', 'grade8HistoryBooks'].forEach(key => {
+      const allServerData = semesterFields.every(key => (semesterMergeChoices.get(key) || 'server') === 'server');
+      semesterFields.forEach(key => {
         const source = semesterMergeChoices.get(key) || 'server';
         merged[key] = JSON.parse(JSON.stringify((source === 'local' ? local : server)[key] || {}));
       });
@@ -4542,16 +4585,16 @@
       rotationDates = merged.rotationDates;
       rotationSchedule = merged.rotationSchedule;
       grade8HistoryBooks = merged.grade8HistoryBooks;
-      localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
-      localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
-      localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
-      localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
-      semesterLocalData = buildCurrentSemesterSavePayload();
-      semesterHasLocalCache = true;
+      recomputeChainFlow();
+      updateSemesterLocalCache();
+      const { semesterDiffers } = reconcileAdminUnsavedChanges();
       semesterLoadState = 'ready';
       semesterMergeChoices.clear();
-      if (semesterSignature(semesterLocalData) !== semesterSignature(semesterServerData)) queueCloudSemesterSave();
-      recomputeChainFlow();
+      if (semesterDiffers) queueCloudSemesterSave();
+      // 全部採用正式資料時，合併只更新本機快取；不得要求再次儲存或重開同一個確認關卡。
+      if (allServerData && !semesterDiffers) {
+        unsavedChangesSemesterId = '';
+      }
       renderAllViews();
       renderCatalogSource();
     }
@@ -4564,12 +4607,13 @@
     function renderCatalogSource() {
       const status = document.getElementById('catalog-source-status');
       const summary = document.getElementById('catalog-source-summary');
+      const updatedAt = document.getElementById('catalog-source-updated-at');
       const semesterSummary = document.getElementById('catalog-source-semester-summary');
       const detail = document.getElementById('catalog-source-detail');
       const panel = document.getElementById('catalog-merge-panel');
       const rows = document.getElementById('catalog-merge-rows');
       const apply = document.getElementById('home-apply-catalog-merge-btn');
-      if (!status || !summary || !semesterSummary || !detail || !panel || !rows) return;
+      if (!status || !summary || !updatedAt || !semesterSummary || !detail || !panel || !rows) return;
       if (!isAdmin) {
         apply?.classList.add('hidden');
         return;
@@ -4603,28 +4647,69 @@
       };
       const lastCode = (catalogServerBooks || []).reduce((last, book) =>
         Number(book.code) > Number(last) ? String(book.code) : last, '0');
+      const officialBooks = catalogServerBooks || [];
+      const booksWithMissingNumbers = officialBooks.filter(book => parseMissingList(book.missing).length > 0);
+      const officialBookTotal = officialBooks.reduce((total, book) => {
+        const savedTotalText = String(book.total ?? '').replace(/本$/g, '').trim();
+        const savedTotal = savedTotalText ? Number(savedTotalText) : Number.NaN;
+        if (Number.isFinite(savedTotal)) return total + savedTotal;
+        const maxNumber = Number(String(book.maxNum ?? '').replace(/本$/g, '').trim());
+        return total + (Number.isFinite(maxNumber) ? Math.max(0, maxNumber - parseMissingList(book.missing).length) : 0);
+      }, 0);
+      const officialCatalogSummary = `正式清冊 ${officialBooks.length} 本，最後編號 ${lastCode}，${booksWithMissingNumbers.length ? `有 ${booksWithMissingNumbers.length} 箱有缺號` : '無缺號'}，共 ${officialBookTotal} 本。`;
       const serverDetail = catalogServerBooks && !catalogDocumentMissing
         ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}${teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError ? '；教師選書設定已確認' : ''}。`
         : '';
       const officialDataConfirmed = isAdminDataConfirmationReady();
+      const isCatalogReview = catalogLoadState === 'review';
+      const isSemesterReview = semesterLoadState === 'review';
+      const canShowOfficialSummary = Boolean(catalogServerBooks && !catalogDocumentMissing);
+      let showDetail = false;
       if (officialDataConfirmed) {
         setCatalogConfirmationLine(status, '①', '已從 Firestore 伺服器讀取正式清冊。');
         status.className = '';
-        setCatalogConfirmationLine(summary, '②', `清冊 ${catalogServerBooks.length} 本，編號 ${lastCode}（${catalogServerSystemDataUploadedAt || '尚無紀錄'}）`);
+        setCatalogConfirmationLine(summary, '②', officialCatalogSummary);
         summary.classList.remove('hidden');
-        setCatalogConfirmationLine(semesterSummary, '③', '學期設定已確認（班級、輪換安排）');
+        setCatalogConfirmationLine(updatedAt, '③', `系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt || '尚無紀錄'}。`);
+        updatedAt.classList.remove('hidden');
+        setCatalogConfirmationLine(semesterSummary, '④', '學期設定已確認（班級、輪換安排）。');
         semesterSummary.classList.remove('hidden');
-        setCatalogConfirmationLine(detail, '④', '教師選書開放時段與選書內容已確認。');
+        setCatalogConfirmationLine(detail, '⑤', '教師選書開放時段與選書內容已確認。');
+        showDetail = true;
+      } else if (canShowOfficialSummary && (isCatalogReview || isSemesterReview)) {
+        setCatalogConfirmationLine(status, '①', isSemesterReview
+          ? '目前學期設定與 Firestore 正式資料不同；請在下方直接比對。'
+          : '目前書箱清冊與 Firestore 正式資料不同；請在下方直接比對。');
+        status.className = '';
+        setCatalogConfirmationLine(summary, '②', officialCatalogSummary);
+        summary.classList.remove('hidden');
+        setCatalogConfirmationLine(updatedAt, '③', `系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt || '尚無紀錄'}。`);
+        updatedAt.classList.remove('hidden');
+        if (!isSemesterReview && semesterLoadState === 'ready') {
+          setCatalogConfirmationLine(semesterSummary, '④', '學期設定已確認（班級、輪換安排）。');
+          semesterSummary.classList.remove('hidden');
+        } else {
+          semesterSummary.textContent = '';
+          semesterSummary.classList.add('hidden');
+        }
+        if (teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError
+          && teacherSelectionRecordsLoaded && !teacherSelectionRecordsLoadError) {
+          setCatalogConfirmationLine(detail, '⑤', '教師選書開放時段與選書內容已確認。');
+          showDetail = true;
+        }
       } else {
         status.textContent = labels[catalogLoadState] || labels.loading;
         status.className = '';
         summary.textContent = '';
         summary.classList.add('hidden');
+        updatedAt.textContent = '';
+        updatedAt.classList.add('hidden');
         semesterSummary.textContent = '';
         semesterSummary.classList.add('hidden');
         detail.textContent = serverDetail;
+        showDetail = Boolean(serverDetail);
       }
-      detail.classList.toggle('hidden', !serverDetail);
+      detail.classList.toggle('hidden', !showDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
       apply?.classList.toggle('hidden', catalogLoadState !== 'review');
       renderSemesterMergePanel();

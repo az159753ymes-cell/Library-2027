@@ -56,7 +56,8 @@ async function run() {
 
   app.run('applyCloudCatalogSnapshot({ exists: true, metadata: { fromCache: false }, data: () => ({ booksData: old }) });');
   assert.equal(app.run('catalogLoadState'), 'review');
-  assert.match(app.elements.get('catalog-source-detail').textContent, /正式清冊 1 本（最後編號 99）/);
+  assert.match(app.elements.get('catalog-source-status').textContent, /目前書箱清冊與 Firestore 正式資料不同/);
+  assert.match(app.elements.get('catalog-source-summary').textContent, /正式清冊 1 本，最後編號 99/);
   assert.match(app.elements.get('catalog-merge-rows').innerHTML, /書箱999號/);
   assert.equal(app.run('booksData.some(book => book.code === "999")'), true, 'server snapshot must retain local 999');
   app.run('applyCatalogMerge();');
@@ -68,14 +69,60 @@ async function run() {
   confirmed.sandbox.old = old;
   confirmed.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; catalogServerSystemDataUploadedAt = "2026/9/16 上午10:58:39"; renderCatalogSource();');
   assert.equal(confirmed.elements.get('catalog-source-status').textContent, '① 已從 Firestore 伺服器讀取正式清冊。');
-  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 清冊 1 本，編號 99（2026/9/16 上午10:58:39）');
-  assert.equal(confirmed.elements.get('catalog-source-semester-summary').textContent, '③ 學期設定已確認（班級、輪換安排）');
-  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '④ 教師選書開放時段與選書內容已確認。');
+  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99，無缺號，共 30 本。');
+  assert.equal(confirmed.elements.get('catalog-source-updated-at').textContent, '③ 系統資料寫入雲端時間 2026/9/16 上午10:58:39。');
+  assert.equal(confirmed.elements.get('catalog-source-semester-summary').textContent, '④ 學期設定已確認（班級、輪換安排）。');
+  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
 
-  confirmed.run('adminDataConfirmationComplete = true; hasUnsavedAdminChanges = true; renderCatalogSource();');
+  confirmed.run('semesterLoadState = "review"; renderCatalogSource();');
+  assert.equal(confirmed.elements.get('catalog-source-status').textContent, '① 目前學期設定與 Firestore 正式資料不同；請在下方直接比對。');
+  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99，無缺號，共 30 本。');
+  assert.equal(confirmed.elements.get('catalog-source-updated-at').textContent, '③ 系統資料寫入雲端時間 2026/9/16 上午10:58:39。');
+  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
+
+  confirmed.run('semesterLoadState = "ready"; adminDataConfirmationComplete = true; hasUnsavedAdminChanges = true; renderCatalogSource();');
   assert.equal(confirmed.run('adminDataConfirmationComplete'), true, 'own unsaved draft must not revoke the completed gate');
   confirmed.run('hasUnsavedAdminChanges = false; catalogLoadState = "review"; currentActiveTab = "home"; renderCatalogSource();');
   assert.equal(confirmed.run('adminDataConfirmationComplete'), false, 'a catalog conflict must revoke the completed gate');
+
+  const serverSemester = {
+    gradeCounts: { g7: 1, g8: 1 },
+    rotationDates: {},
+    rotationSchedule: {
+      '701': { p1: null, p2: null, p3: null },
+      '801': { p1: null, p2: null, p3: null }
+    },
+    grade8HistoryBooks: {}
+  };
+  const adoptSemesterServer = createApp();
+  adoptSemesterServer.sandbox.old = old;
+  adoptSemesterServer.sandbox.serverSemester = serverSemester;
+  adoptSemesterServer.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; currentSemester = "115-1"; gradeCounts = { g7: 2, g8: 1 }; rotationDates = {}; rotationSchedule = {}; grade8HistoryBooks = {}; semesterLocalData = buildCurrentSemesterSavePayload(); semesterServerData = serverSemester; semesterHasLocalCache = true; semesterLoadState = "review"; hasUnsavedAdminChanges = true; unsavedChangesSemesterId = currentSemester; applySemesterMerge();');
+  assert.equal(adoptSemesterServer.run('semesterLoadState'), 'ready');
+  assert.equal(adoptSemesterServer.run('hasUnsavedAdminChanges'), false, 'all-server semester merge discards the semester draft');
+  assert.equal(adoptSemesterServer.run('unsavedChangesSemesterId'), '');
+  assert.equal(adoptSemesterServer.run('semesterSignature(semesterLocalData) === semesterSignature(semesterServerData)'), true);
+  assert.equal(adoptSemesterServer.run('isAdminDataConfirmationReady()'), true, 'all-server merge can enter the workspace without saving');
+  adoptSemesterServer.run('adminDataConfirmationComplete = true; currentActiveTab = "catalog"; applySemesterCloudSnapshot({ exists: true, metadata: { hasPendingWrites: false }, data: () => serverSemester });');
+  assert.equal(adoptSemesterServer.run('semesterLoadState'), 'ready', 'the matching server snapshot must not reopen review');
+  assert.equal(adoptSemesterServer.run('adminDataConfirmationComplete'), true, 'the matching server snapshot must not send the admin back to confirmation');
+
+  const mixedSemesterMerge = createApp();
+  mixedSemesterMerge.sandbox.old = old;
+  mixedSemesterMerge.sandbox.serverSemester = serverSemester;
+  mixedSemesterMerge.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; currentSemester = "115-1"; gradeCounts = { g7: 2, g8: 1 }; rotationDates = {}; rotationSchedule = {}; grade8HistoryBooks = {}; semesterLocalData = buildCurrentSemesterSavePayload(); semesterServerData = serverSemester; semesterHasLocalCache = true; semesterLoadState = "review"; semesterMergeChoices.set("gradeCounts", "local"); applySemesterMerge();');
+  assert.equal(mixedSemesterMerge.run('semesterLoadState'), 'ready');
+  assert.equal(mixedSemesterMerge.run('hasUnsavedAdminChanges'), true, 'a mixed merge remains an unsaved local change');
+  assert.equal(mixedSemesterMerge.run('unsavedChangesSemesterId'), '115-1');
+
+  const catalogDraftWithServerSemester = createApp();
+  catalogDraftWithServerSemester.sandbox.old = old;
+  catalogDraftWithServerSemester.sandbox.local = local;
+  catalogDraftWithServerSemester.sandbox.serverSemester = serverSemester;
+  catalogDraftWithServerSemester.run('booksData = local; catalogLocalBooks = local; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; currentSemester = "115-1"; gradeCounts = { g7: 2, g8: 1 }; rotationDates = {}; rotationSchedule = {}; grade8HistoryBooks = {}; semesterLocalData = buildCurrentSemesterSavePayload(); semesterServerData = serverSemester; semesterHasLocalCache = true; semesterLoadState = "review"; hasUnsavedAdminChanges = true; unsavedChangesSemesterId = currentSemester; applySemesterMerge();');
+  assert.equal(catalogDraftWithServerSemester.run('semesterLoadState'), 'ready');
+  assert.equal(catalogDraftWithServerSemester.run('hasUnsavedAdminChanges'), true, 'an independent catalog draft remains pending');
+  assert.equal(catalogDraftWithServerSemester.run('unsavedChangesSemesterId'), '', 'the accepted semester must not remain marked as a draft');
 
   const cleanCache = createApp();
   cleanCache.sandbox.old = old;
