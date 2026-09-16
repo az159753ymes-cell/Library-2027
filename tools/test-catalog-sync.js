@@ -56,13 +56,20 @@ async function run() {
 
   app.run('applyCloudCatalogSnapshot({ exists: true, metadata: { fromCache: false }, data: () => ({ booksData: old }) });');
   assert.equal(app.run('catalogLoadState'), 'review');
-  assert.match(app.elements.get('catalog-source-status').textContent, /正式清冊 1 本，最後編號 99/);
+  assert.match(app.elements.get('catalog-source-detail').textContent, /正式清冊 1 本（最後編號 99）/);
   assert.match(app.elements.get('catalog-merge-rows').innerHTML, /書箱999號/);
   assert.equal(app.run('booksData.some(book => book.code === "999")'), true, 'server snapshot must retain local 999');
   app.run('applyCatalogMerge();');
   assert.equal(app.run('catalogLoadState'), 'ready');
   assert.equal(app.run('booksData.some(book => book.code === "999")'), true, 'default merge keeps local-only book');
   assert.equal(app.run('hasUnsavedAdminChanges'), true);
+
+  const confirmed = createApp();
+  confirmed.sandbox.old = old;
+  confirmed.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; catalogServerSystemDataUploadedAt = "2026/9/16 上午10:58:39"; renderCatalogSource();');
+  assert.equal(confirmed.elements.get('catalog-source-status').textContent, '已從 Firestore 伺服器讀取正式清冊。');
+  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '正式清冊 1 本，最後編號 99');
+  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '更新時間 2026/9/16 上午10:58:39；教師選書設定已確認。');
 
   const cleanCache = createApp();
   cleanCache.sandbox.old = old;
@@ -91,7 +98,7 @@ async function run() {
   failed.sandbox.local = local;
   failed.sandbox.mockDb = { collection: () => ({ doc: () => ({ get: async () => { throw new Error('offline'); } }) }) };
   failed.run('booksData = local; firestoreDb = mockDb;');
-  await failed.run('refreshCatalogFromServer()');
+  await failed.run('loadCatalogFromServer()');
   assert.equal(failed.run('catalogLoadState'), 'failed');
   assert.equal(failed.run('booksData.some(book => book.code === "999")'), true);
 

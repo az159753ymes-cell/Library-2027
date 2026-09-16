@@ -2297,12 +2297,13 @@
       </div>
 
       <!-- 管理員首頁：先確認本機與正式資料，再進入工作頁面。 -->
-      <div id="tab-home" class="hidden space-y-6">
+      <div id="tab-home" class="hidden mx-auto w-full max-w-[720px] space-y-6">
         <section class="rounded-2xl border border-[#D8CEBE] bg-[#FFFDF9] p-5 shadow-sm sm:p-6" aria-labelledby="admin-home-title">
           <h3 id="admin-home-title" class="text-2xl font-extrabold text-[#2C5E43]">資料確認</h3>
           <p class="mt-2 text-base leading-6 text-[#52796F]">先確認此裝置與 Firestore 的共用清冊及目前學期設定，再進入書箱清冊。</p>
           <section id="catalog-source-panel" class="mt-5 rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base font-semibold leading-6 text-[#52796F]" role="status" aria-live="polite">
           <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
+          <p id="catalog-source-summary" class="hidden mt-1 font-extrabold text-[#2C5E43]"></p>
           <p id="catalog-source-detail" class="mt-1"></p>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
             <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，還須按 LIBRARY → 確認儲存。</p>
@@ -2315,7 +2316,9 @@
             <button type="button" onclick="applySemesterMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認設定至目前畫面</button>
           </div>
           </section>
-          <button id="home-enter-catalog-btn" type="button" onclick="switchTab('catalog')" class="mt-5 hidden rounded-xl bg-[#2C5E43] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#224833]">進入書箱清冊</button>
+          <div class="mt-5 flex justify-end">
+            <button id="home-enter-catalog-btn" type="button" onclick="switchTab('catalog')" class="hidden rounded-xl bg-[#B85E3F] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#994A34]">進入書箱清冊</button>
+          </div>
         </section>
       </div>
 
@@ -3125,10 +3128,12 @@
         hideTeacherGuideBubble();
         closeTeacherLoginReminder();
       }
+      const desktopAdminHome = isAdmin && currentActiveTab === 'home'
+        && !window.matchMedia('(max-width: 760px)').matches;
       if (homeBtn) homeBtn.classList.toggle('hidden', !isAdmin);
-      if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin);
-      if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin);
-      if (selectionBtn) selectionBtn.classList.remove('hidden');
+      if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin || desktopAdminHome);
+      if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin || desktopAdminHome);
+      if (selectionBtn) selectionBtn.classList.toggle('hidden', isAdmin && desktopAdminHome);
       if (action) action.classList.toggle('hidden', !isAdmin || currentActiveTab !== 'catalog');
       if (adminLogoSave) adminLogoSave.classList.toggle('hidden', !isAdmin);
       if (teacherWordmark) teacherWordmark.classList.toggle('hidden', isAdmin);
@@ -4246,10 +4251,11 @@
 
     function renderCatalogSource() {
       const status = document.getElementById('catalog-source-status');
+      const summary = document.getElementById('catalog-source-summary');
       const detail = document.getElementById('catalog-source-detail');
       const panel = document.getElementById('catalog-merge-panel');
       const rows = document.getElementById('catalog-merge-rows');
-      if (!status || !detail || !panel || !rows || !isAdmin) return;
+      if (!status || !summary || !detail || !panel || !rows || !isAdmin) return;
       const labels = {
         loading: '尚未從 Firestore 伺服器取得正式清冊；目前顯示本機或預設資料。',
         missing: 'Firestore 正式清冊不存在；目前顯示本機或預設資料，禁止直接覆寫。',
@@ -4278,8 +4284,25 @@
       const serverDetail = catalogServerBooks && !catalogDocumentMissing
         ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}${teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError ? '；教師選書設定已確認' : ''}。`
         : '';
-      status.textContent = labels[catalogLoadState] || labels.loading;
-      detail.textContent = serverDetail;
+      const officialDataConfirmed = catalogLoadState === 'ready'
+        && adminSettingsLoadState === 'ready'
+        && semesterLoadState === 'ready'
+        && teacherSelectionWindowLoaded
+        && !teacherSelectionWindowLoadError
+        && !hasUnsavedAdminChanges;
+      if (officialDataConfirmed) {
+        status.textContent = '已從 Firestore 伺服器讀取正式清冊。';
+        status.className = 'font-extrabold text-[#2C5E43]';
+        summary.textContent = `正式清冊 ${catalogServerBooks.length} 本，最後編號 ${lastCode}`;
+        summary.classList.remove('hidden');
+        detail.textContent = `更新時間 ${catalogServerSystemDataUploadedAt || '尚無紀錄'}；教師選書設定已確認。`;
+      } else {
+        status.textContent = labels[catalogLoadState] || labels.loading;
+        status.className = 'font-semibold';
+        summary.textContent = '';
+        summary.classList.add('hidden');
+        detail.textContent = serverDetail;
+      }
       detail.classList.toggle('hidden', !serverDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
       renderSemesterMergePanel();
@@ -5171,6 +5194,7 @@
     window.addEventListener('resize', () => {
       if (!currentUser || !isAdmin) return;
       syncAdminSavePopoverHost();
+      syncRoleUi();
     });
 
     window.addEventListener('beforeunload', event => {
