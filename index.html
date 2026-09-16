@@ -19,6 +19,7 @@
   <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/wugao-library-banner-v5-1500.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/sidebar-student-presenting-transparent-v3-440.webp" type="image/webp" fetchpriority="high">
+  <link rel="preload" as="image" href="assets/admin-confirmation-frame-watercolor-v1.png" type="image/png" fetchpriority="high">
   <script>
     tailwind.config = {
       theme: {
@@ -366,6 +367,76 @@
       margin-left: 240px !important;
     }
 
+    /* 管理員登入後的資料確認關卡：暫時移除工作介面的欄位，專注確認正式資料。 */
+    body.admin-confirmation-mode #app-sidebar,
+    body.admin-confirmation-mode #mobile-app-header,
+    body.admin-confirmation-mode .app-page-header {
+      display: none !important;
+    }
+
+    body.admin-confirmation-mode #app-main {
+      display: flex !important;
+      min-height: 100dvh;
+      align-items: center;
+      justify-content: center;
+      margin-left: 0 !important;
+      padding: clamp(1.5rem, 4vw, 4rem) 1.5rem !important;
+    }
+
+    body.admin-confirmation-mode #app-main > div {
+      width: 100%;
+      max-width: none;
+    }
+
+    .admin-confirmation-stage {
+      position: relative;
+      width: min(100%, 900px);
+      margin: 0 auto;
+      padding: clamp(1rem, 4vw, 3.5rem);
+    }
+
+    .admin-confirmation-frame {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .admin-confirmation-card {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 640px);
+      margin: 0 auto;
+      border: 1px solid #D8CEBE;
+      border-radius: 24px;
+      background: rgba(255, 253, 249, .96);
+      box-shadow: 0 18px 40px rgba(69, 55, 42, .14);
+      padding: clamp(1.5rem, 4vw, 2.25rem);
+    }
+
+    .admin-confirmation-wordmark {
+      display: block;
+      width: min(100%, 220px);
+      height: auto;
+      margin: 0 auto clamp(1.25rem, 3vw, 1.75rem);
+      filter: drop-shadow(0 2px 1px rgba(91, 55, 40, .08));
+    }
+
+    #home-confirm-save-host {
+      position: relative;
+    }
+
+    #home-confirm-save-host .admin-logo-save-popover {
+      top: calc(100% + 12px);
+      left: 50%;
+      width: min(330px, calc(100vw - 48px));
+      transform: translateX(-50%);
+    }
+
     #mobile-app-header {
       display: none;
     }
@@ -554,6 +625,30 @@
         box-sizing: border-box;
         margin-left: 0 !important;
         padding: 84px 16px 24px !important;
+      }
+
+      body.admin-confirmation-mode #app-main {
+        min-height: 100dvh;
+        padding: 24px 16px !important;
+      }
+
+      .admin-confirmation-stage {
+        width: 100%;
+        padding: 1rem 0;
+      }
+
+      .admin-confirmation-frame {
+        inset: 50% 0 auto;
+        width: 118%;
+        height: auto;
+        max-width: none;
+        transform: translate(-8%, -50%);
+        opacity: .64;
+      }
+
+      .admin-confirmation-card {
+        border-radius: 20px;
+        padding: 24px 18px;
       }
 
       /* 教師手機端已在固定頂部列提供名稱與登出，隱藏桌機頁首以避免重複。 */
@@ -2290,27 +2385,30 @@
         </div>
       </div>
 
-      <!-- 管理員首頁：先確認本機與正式資料，再進入工作頁面。 -->
-      <div id="tab-home" class="hidden mx-auto w-full max-w-[720px] space-y-6">
-        <section class="rounded-2xl border border-[#D8CEBE] bg-[#FFFDF9] p-5 shadow-sm sm:p-6" aria-labelledby="admin-home-title">
-          <h3 id="admin-home-title" class="text-2xl font-extrabold text-[#2C5E43]">資料確認</h3>
-          <p class="mt-2 text-base leading-6 text-[#52796F]">先確認此裝置與 Firestore 的共用清冊及目前學期設定，再進入書箱清冊。</p>
-          <section id="catalog-source-panel" class="mt-5 rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base font-semibold leading-6 text-[#52796F]" role="status" aria-live="polite">
+      <!-- 管理員資料確認關卡：先確認本機與正式資料，再進入工作頁面。 -->
+      <div id="tab-home" class="admin-confirmation-stage hidden">
+        <img src="assets/admin-confirmation-frame-watercolor-v1.png" alt="" class="admin-confirmation-frame" aria-hidden="true" decoding="async" />
+        <section class="admin-confirmation-card">
+          <img src="assets/library-wordmark-eucalyptus-brush-v4-600.webp" alt="LIBRARY" class="admin-confirmation-wordmark" decoding="async" />
+          <section id="catalog-source-panel" class="rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base font-semibold leading-6 text-[#52796F]" role="status" aria-live="polite">
           <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
           <p id="catalog-source-summary" class="hidden mt-1 font-extrabold text-[#2C5E43]"></p>
           <p id="catalog-source-detail" class="mt-1"></p>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
-            <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，還須按 LIBRARY → 確認儲存。</p>
+            <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，再按下方「確認儲存」。</p>
             <div id="catalog-merge-rows" class="max-h-72 space-y-2 overflow-y-auto"></div>
             <button type="button" onclick="applyCatalogMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認合併至目前畫面</button>
           </div>
           <div id="semester-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
-            <p class="mb-2">目前學期設定與正式資料不同。請逐類選擇保留來源；完成後仍須按 LOGO → 確認儲存才會發布。</p>
+            <p class="mb-2">目前學期設定與正式資料不同。請逐類選擇保留來源；完成後再按下方「確認儲存」才會發布。</p>
             <div id="semester-merge-rows" class="space-y-2"></div>
             <button type="button" onclick="applySemesterMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認設定至目前畫面</button>
           </div>
           </section>
-          <div class="mt-5 flex justify-end">
+          <div id="home-confirm-save-host" class="mt-5 flex justify-end">
+            <button id="home-confirm-save-btn" type="button" onclick="openAdminSavePopover()" class="hidden rounded-xl bg-[#8C5A3C] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#70452C]">確認儲存</button>
+          </div>
+          <div class="mt-4 flex justify-end">
             <button id="home-enter-catalog-btn" type="button" onclick="enterAdminWorkspace()" class="hidden rounded-xl bg-[#B85E3F] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#994A34]">進入書箱清冊</button>
           </div>
         </section>
@@ -2962,7 +3060,8 @@
 
     const homeIllustrationsReady = Promise.all([
       'assets/wugao-library-banner-v5-1500.webp',
-      'assets/sidebar-student-presenting-transparent-v3-440.webp'
+      'assets/sidebar-student-presenting-transparent-v3-440.webp',
+      'assets/admin-confirmation-frame-watercolor-v1.png'
     ].map(decodeIllustration));
 
     mobileLoginIllustrationReady.then(() => {
@@ -3124,19 +3223,21 @@
         closeTeacherLoginReminder();
       }
       const adminConfirmationGate = isAdmin && !adminDataConfirmationComplete;
+      document.body?.classList?.toggle('admin-confirmation-mode', adminConfirmationGate && currentActiveTab === 'home');
       if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
       if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
       if (selectionBtn) selectionBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
       if (action) action.classList.toggle('hidden', !isAdmin || currentActiveTab !== 'catalog');
       if (adminLogoSave) adminLogoSave.classList.toggle('hidden', !isAdmin);
       if (teacherWordmark) teacherWordmark.classList.toggle('hidden', isAdmin);
-      if (mobileHeader) mobileHeader.classList.toggle('hidden', !currentUser);
+      if (mobileHeader) mobileHeader.classList.toggle('hidden', !currentUser || adminConfirmationGate);
       if (mobileAdminNav) mobileAdminNav.classList.toggle('hidden', !currentUser || !isAdmin || adminConfirmationGate);
       if (mobileAdminSave) mobileAdminSave.classList.toggle('hidden', !currentUser || !isAdmin);
       if (mobileTeacherStatus) mobileTeacherStatus.classList.toggle('hidden', !currentUser || isAdmin);
       if (mobileTeacherWordmark) mobileTeacherWordmark.classList.toggle('hidden', !currentUser || isAdmin);
       if (mobileSignOut) mobileSignOut.classList.toggle('hidden', !currentUser);
       if (mobileTeacherClass) mobileTeacherClass.textContent = teacherClassCode ? `（${teacherClassCode}書箱）` : '';
+      syncHomeConfirmationSaveButton();
       if (appMain) appMain.classList.toggle('teacher-mobile-view', Boolean(currentUser) && !isAdmin);
       ['catalog', 'rotation', 'selection'].forEach(tabName => {
         const mobileTab = document.getElementById(`mobile-tab-${tabName}-btn`);
@@ -3256,8 +3357,10 @@
       const popover = document.getElementById('admin-save-popover');
       const desktopHost = document.getElementById('admin-logo-save-container');
       const mobileHost = document.getElementById('mobile-app-header');
-      const useMobileHost = Boolean(currentUser) && isAdmin && window.matchMedia('(max-width: 760px)').matches;
-      const targetHost = useMobileHost ? mobileHost : desktopHost;
+      const confirmationHost = document.getElementById('home-confirm-save-host');
+      const useConfirmationHost = isAdmin && !adminDataConfirmationComplete && currentActiveTab === 'home';
+      const useMobileHost = !useConfirmationHost && Boolean(currentUser) && isAdmin && window.matchMedia('(max-width: 760px)').matches;
+      const targetHost = useConfirmationHost ? confirmationHost : (useMobileHost ? mobileHost : desktopHost);
       if (!popover || !targetHost || popover.parentElement === targetHost) return;
       targetHost.appendChild(popover);
     }
@@ -3932,9 +4035,12 @@
         renderAdminSavePopover();
         return;
       }
-      const logoButton = document.getElementById('admin-logo-save-btn');
-      if (logoButton?.disabled || pendingCloudSemesterSaves > 0) return;
-      if (logoButton) logoButton.disabled = true;
+      const saveTriggers = [
+        document.getElementById('admin-logo-save-btn'),
+        document.getElementById('home-confirm-save-btn')
+      ].filter(Boolean);
+      if (saveTriggers.some(button => button.disabled) || pendingCloudSemesterSaves > 0) return;
+      saveTriggers.forEach(button => { button.disabled = true; });
       let saveError = null;
       try {
         const importedTeacherSelections = await maybeAutoImportTeacherSelections();
@@ -3946,7 +4052,7 @@
         console.error('手動同步資料失敗：', error);
         saveError = error;
       } finally {
-        if (logoButton) logoButton.disabled = false;
+        saveTriggers.forEach(button => { button.disabled = false; });
         renderAdminSavePopover(saveError);
       }
     }
@@ -4189,6 +4295,13 @@
       return isAdminDataSourcesConfirmed() && !hasUnsavedAdminChanges;
     }
 
+    function syncHomeConfirmationSaveButton() {
+      const button = document.getElementById('home-confirm-save-btn');
+      if (!button) return;
+      const isGate = isAdmin && !adminDataConfirmationComplete && currentActiveTab === 'home';
+      button.classList.toggle('hidden', !isGate || !hasUnsavedAdminChanges);
+    }
+
     function enterAdminWorkspace() {
       if (!isAdminDataConfirmationReady()) {
         renderCatalogSource();
@@ -4329,6 +4442,7 @@
       detail.classList.toggle('hidden', !serverDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
       renderSemesterMergePanel();
+      syncHomeConfirmationSaveButton();
       if (enforceAdminDataConfirmationGate()) return;
       if (catalogLoadState !== 'review') return;
       const localByCode = new Map((catalogLocalBooks || []).map(book => [String(book.code), book]));
@@ -5209,9 +5323,12 @@
       initializeSecureApp();
       document.addEventListener('pointerdown', event => {
         const popover = document.getElementById('admin-save-popover');
-        const saveButton = document.getElementById('admin-logo-save-btn');
+        const saveButtons = [
+          document.getElementById('admin-logo-save-btn'),
+          document.getElementById('home-confirm-save-btn')
+        ];
         if (!popover || popover.classList.contains('hidden') || pendingCloudSemesterSaves > 0) return;
-        if (popover.contains(event.target) || saveButton?.contains(event.target)) return;
+        if (popover.contains(event.target) || saveButtons.some(button => button?.contains(event.target))) return;
         closeAdminSavePopover();
       });
     });
@@ -5836,7 +5953,7 @@
 
       if (tabName === 'home') {
         homeTab.classList.remove('hidden');
-        pageTitle.innerText = '資料確認';
+        pageTitle.innerText = '';
         actionContainer.classList.add('hidden');
         if (semesterContainer) semesterContainer.classList.add('hidden');
         if (gearBtn) gearBtn.classList.add('hidden');
