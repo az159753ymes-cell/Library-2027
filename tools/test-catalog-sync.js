@@ -14,7 +14,7 @@ function createApp() {
   const elements = new Map();
   const element = id => {
     if (!elements.has(id)) elements.set(id, {
-      textContent: '', innerHTML: '', value: '', dataset: {}, querySelectorAll: () => [],
+      textContent: '', innerHTML: '', value: '', dataset: {}, querySelectorAll: () => [], setAttribute() {},
       classList: { toggle() {}, add() {}, remove() {}, contains() { return true; } }
     });
     return elements.get(id);
@@ -70,6 +70,11 @@ async function run() {
   assert.equal(confirmed.elements.get('catalog-source-status').textContent, '已從 Firestore 伺服器讀取正式清冊。');
   assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '正式清冊 1 本，最後編號 99');
   assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '更新時間 2026/9/16 上午10:58:39；教師選書設定已確認。');
+
+  confirmed.run('adminDataConfirmationComplete = true; hasUnsavedAdminChanges = true; renderCatalogSource();');
+  assert.equal(confirmed.run('adminDataConfirmationComplete'), true, 'own unsaved draft must not revoke the completed gate');
+  confirmed.run('hasUnsavedAdminChanges = false; catalogLoadState = "review"; currentActiveTab = "home"; renderCatalogSource();');
+  assert.equal(confirmed.run('adminDataConfirmationComplete'), false, 'a catalog conflict must revoke the completed gate');
 
   const cleanCache = createApp();
   cleanCache.sandbox.old = old;

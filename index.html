@@ -2134,11 +2134,6 @@
 
     <!-- 導航選單按鈕 (白底綠字圓角卡片 / 透光白字) -->
     <nav class="flex-1 p-4 space-y-2.5">
-      <button id="tab-home-btn" onclick="switchTab('home')"
-        class="w-full px-5 py-3.5 rounded-xl font-bold text-left text-base lg:text-lg transition-all duration-200 bg-[#FFFDF6]/95 text-[#2F6057] shadow-sm flex items-center gap-3">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5v-9Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21v-6h6v6"/></svg>
-        <span>首頁</span>
-      </button>
       <button id="tab-catalog-btn" onclick="switchTab('catalog')"
         class="w-full px-5 py-3.5 rounded-xl font-bold text-left text-base lg:text-lg transition-all duration-200 bg-[#FFFDF6]/95 text-[#2F6057] shadow-sm flex items-center gap-3">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2210,7 +2205,6 @@
     </button>
     <img id="mobile-teacher-library-wordmark" src="assets/library-wordmark-eucalyptus-brush-v4-600.webp" alt="LIBRARY 圖書館" class="mobile-brand hidden" decoding="async" />
     <nav id="mobile-admin-nav" class="mobile-admin-nav hidden" aria-label="管理功能">
-      <button id="mobile-tab-home-btn" type="button" onclick="switchTab('home')" class="mobile-nav-button">首頁</button>
       <button id="mobile-tab-catalog-btn" type="button" onclick="switchTab('catalog')" class="mobile-nav-button">書箱清冊</button>
       <button id="mobile-tab-rotation-btn" type="button" onclick="switchTab('rotation')" class="mobile-nav-button">班際輪換</button>
       <button id="mobile-tab-selection-btn" type="button" onclick="switchTab('selection')" class="mobile-nav-button">教師選書</button>
@@ -2317,7 +2311,7 @@
           </div>
           </section>
           <div class="mt-5 flex justify-end">
-            <button id="home-enter-catalog-btn" type="button" onclick="switchTab('catalog')" class="hidden rounded-xl bg-[#B85E3F] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#994A34]">進入書箱清冊</button>
+            <button id="home-enter-catalog-btn" type="button" onclick="enterAdminWorkspace()" class="hidden rounded-xl bg-[#B85E3F] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#994A34]">進入書箱清冊</button>
           </div>
         </section>
       </div>
@@ -2908,6 +2902,8 @@
     let pendingCloudSemesterSaves = 0;
     let cloudSyncStatus = 'idle';
     let hasUnsavedAdminChanges = false;
+    // 僅在本次登入工作階段有效；重新整理或登出後必須再次確認正式資料。
+    let adminDataConfirmationComplete = false;
     let unsavedChangesSemesterId = '';
     let catalogLoadState = 'loading';
     let catalogServerBooks = null;
@@ -3096,7 +3092,6 @@
       const adminCharacter = document.getElementById('admin-character-sign-out');
       const teacherGuide = document.getElementById('teacher-sidebar-guide');
       const action = document.getElementById('header-action-container');
-      const homeBtn = document.getElementById('tab-home-btn');
       const catalogBtn = document.getElementById('tab-catalog-btn');
       const rotationBtn = document.getElementById('tab-rotation-btn');
       const selectionBtn = document.getElementById('tab-selection-btn');
@@ -3128,24 +3123,22 @@
         hideTeacherGuideBubble();
         closeTeacherLoginReminder();
       }
-      const desktopAdminHome = isAdmin && currentActiveTab === 'home'
-        && !window.matchMedia('(max-width: 760px)').matches;
-      if (homeBtn) homeBtn.classList.toggle('hidden', !isAdmin);
-      if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin || desktopAdminHome);
-      if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin || desktopAdminHome);
-      if (selectionBtn) selectionBtn.classList.toggle('hidden', isAdmin && desktopAdminHome);
+      const adminConfirmationGate = isAdmin && !adminDataConfirmationComplete;
+      if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
+      if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
+      if (selectionBtn) selectionBtn.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
       if (action) action.classList.toggle('hidden', !isAdmin || currentActiveTab !== 'catalog');
       if (adminLogoSave) adminLogoSave.classList.toggle('hidden', !isAdmin);
       if (teacherWordmark) teacherWordmark.classList.toggle('hidden', isAdmin);
       if (mobileHeader) mobileHeader.classList.toggle('hidden', !currentUser);
-      if (mobileAdminNav) mobileAdminNav.classList.toggle('hidden', !currentUser || !isAdmin);
+      if (mobileAdminNav) mobileAdminNav.classList.toggle('hidden', !currentUser || !isAdmin || adminConfirmationGate);
       if (mobileAdminSave) mobileAdminSave.classList.toggle('hidden', !currentUser || !isAdmin);
       if (mobileTeacherStatus) mobileTeacherStatus.classList.toggle('hidden', !currentUser || isAdmin);
       if (mobileTeacherWordmark) mobileTeacherWordmark.classList.toggle('hidden', !currentUser || isAdmin);
       if (mobileSignOut) mobileSignOut.classList.toggle('hidden', !currentUser);
       if (mobileTeacherClass) mobileTeacherClass.textContent = teacherClassCode ? `（${teacherClassCode}書箱）` : '';
       if (appMain) appMain.classList.toggle('teacher-mobile-view', Boolean(currentUser) && !isAdmin);
-      ['home', 'catalog', 'rotation', 'selection'].forEach(tabName => {
+      ['catalog', 'rotation', 'selection'].forEach(tabName => {
         const mobileTab = document.getElementById(`mobile-tab-${tabName}-btn`);
         if (!mobileTab) return;
         const isActive = isAdmin && currentActiveTab === tabName;
@@ -3159,7 +3152,7 @@
       if (printBtn) printBtn.classList.toggle('hidden', !isAdmin || currentActiveTab !== 'catalog');
       const productionBackup = document.getElementById('admin-production-backup-container');
       if (productionBackup) {
-        productionBackup.classList.toggle('hidden', !isAdmin);
+        productionBackup.classList.toggle('hidden', !isAdmin || adminConfirmationGate);
         const backupButton = document.getElementById('admin-production-backup-btn');
         const backupTooltip = document.getElementById('admin-backup-tooltip');
         const backupLabel = '下載正式資料備份';
@@ -4184,13 +4177,48 @@
       }));
     }
 
+    function isAdminDataSourcesConfirmed() {
+      return catalogLoadState === 'ready'
+        && adminSettingsLoadState === 'ready'
+        && semesterLoadState === 'ready'
+        && teacherSelectionWindowLoaded
+        && !teacherSelectionWindowLoadError;
+    }
+
+    function isAdminDataConfirmationReady() {
+      return isAdminDataSourcesConfirmed() && !hasUnsavedAdminChanges;
+    }
+
+    function enterAdminWorkspace() {
+      if (!isAdminDataConfirmationReady()) {
+        renderCatalogSource();
+        return;
+      }
+      adminDataConfirmationComplete = true;
+      switchTab('catalog');
+    }
+
+    function requiresAdminDataReconfirmation() {
+      return ['review', 'missing', 'failed'].includes(catalogLoadState)
+        || ['review', 'missing', 'failed'].includes(semesterLoadState)
+        || ['missing', 'failed'].includes(adminSettingsLoadState)
+        || Boolean(teacherSelectionWindowLoadError);
+    }
+
+    function enforceAdminDataConfirmationGate() {
+      if (!isAdmin || !adminDataConfirmationComplete || !requiresAdminDataReconfirmation()) return false;
+      adminDataConfirmationComplete = false;
+      if (currentActiveTab !== 'home') switchTab('home');
+      else syncRoleUi();
+      return true;
+    }
+
     function renderSemesterMergePanel() {
       const panel = document.getElementById('semester-merge-panel');
       const rows = document.getElementById('semester-merge-rows');
       const enter = document.getElementById('home-enter-catalog-btn');
       if (!panel || !rows || !enter) return;
-      const canEnter = catalogLoadState === 'ready' && adminSettingsLoadState === 'ready'
-        && semesterLoadState === 'ready' && teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError;
+      const canEnter = isAdminDataConfirmationReady();
       enter.classList.toggle('hidden', !canEnter);
       panel.classList.toggle('hidden', semesterLoadState !== 'review');
       if (semesterLoadState !== 'review') return;
@@ -4284,12 +4312,7 @@
       const serverDetail = catalogServerBooks && !catalogDocumentMissing
         ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}${teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError ? '；教師選書設定已確認' : ''}。`
         : '';
-      const officialDataConfirmed = catalogLoadState === 'ready'
-        && adminSettingsLoadState === 'ready'
-        && semesterLoadState === 'ready'
-        && teacherSelectionWindowLoaded
-        && !teacherSelectionWindowLoadError
-        && !hasUnsavedAdminChanges;
+      const officialDataConfirmed = isAdminDataConfirmationReady();
       if (officialDataConfirmed) {
         status.textContent = '已從 Firestore 伺服器讀取正式清冊。';
         status.className = 'font-extrabold text-[#2C5E43]';
@@ -4306,6 +4329,7 @@
       detail.classList.toggle('hidden', !serverDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
       renderSemesterMergePanel();
+      if (enforceAdminDataConfirmationGate()) return;
       if (catalogLoadState !== 'review') return;
       const localByCode = new Map((catalogLocalBooks || []).map(book => [String(book.code), book]));
       const serverByCode = new Map((catalogServerBooks || []).map(book => [String(book.code), book]));
@@ -4640,6 +4664,7 @@
       semesterMergeChoices.clear();
       unsavedChangesSemesterId = '';
       catalogMergeChoices.clear();
+      adminDataConfirmationComplete = false;
       teacherSelectionWindowLoaded = false;
       teacherSelectionWindowLoadError = '';
       currentUser = user;
@@ -5770,6 +5795,7 @@
     // 左側側邊欄 頁籤切換邏輯
     function switchTab(tabName) {
       if (!isAdmin && tabName !== 'selection') tabName = 'selection';
+      if (isAdmin && tabName !== 'home' && !adminDataConfirmationComplete) tabName = 'home';
       if (isAdmin && currentActiveTab === 'catalog' && tabName !== 'catalog') closeForm();
       const leavingHistoricalRotation = currentActiveTab === 'rotation'
         && tabName !== 'rotation' && isHistoricalRotationSemester();
@@ -5782,7 +5808,6 @@
       const catalogTab = document.getElementById('tab-catalog');
       const rotationTab = document.getElementById('tab-rotation');
       const selectionTab = document.getElementById('tab-selection');
-      const homeBtn = document.getElementById('tab-home-btn');
       const catalogBtn = document.getElementById('tab-catalog-btn');
       const rotationBtn = document.getElementById('tab-rotation-btn');
       const selectionBtn = document.getElementById('tab-selection-btn');
@@ -5805,15 +5830,13 @@
         desktopSummary.innerHTML = '';
       }
 
-      homeBtn.className = inactiveClass;
       catalogBtn.className = inactiveClass;
       rotationBtn.className = inactiveClass;
       selectionBtn.className = inactiveClass;
 
       if (tabName === 'home') {
         homeTab.classList.remove('hidden');
-        homeBtn.className = activeClass;
-        pageTitle.innerText = '首頁';
+        pageTitle.innerText = '資料確認';
         actionContainer.classList.add('hidden');
         if (semesterContainer) semesterContainer.classList.add('hidden');
         if (gearBtn) gearBtn.classList.add('hidden');
