@@ -2886,6 +2886,7 @@
     let pendingCloudSemesterSaves = 0;
     let cloudSyncStatus = 'idle';
     let hasUnsavedAdminChanges = false;
+    let unsavedChangesSemesterId = '';
     let catalogLoadState = 'loading';
     let catalogServerBooks = null;
     let catalogServerSystemDataUploadedAt = '';
@@ -3792,6 +3793,7 @@
     }
 
     function queueCloudSemesterSave() {
+      unsavedChangesSemesterId = currentSemester;
       markAdminChangesUnsaved();
     }
 
@@ -3873,6 +3875,7 @@
         catalogAcceptedSignature = catalogSignature(nextBooks);
         localStorage.setItem(getCatalogBaselineKey(), catalogAcceptedSignature);
         hasUnsavedAdminChanges = false;
+        unsavedChangesSemesterId = '';
         catalogLoadState = 'ready';
         renderCatalogSource();
         if (pendingCloudSemesterSaves === 1) setCloudSyncStatus('saved');
@@ -4190,7 +4193,7 @@
       localStorage.setItem(getCatalogBaselineKey(), catalogAcceptedSignature);
       catalogLoadState = 'ready';
       catalogMergeChoices.clear();
-      if (catalogSignature(merged) !== catalogSignature(catalogServerBooks)) markAdminChangesUnsaved();
+      if (catalogSignature(merged) !== catalogSignature(catalogServerBooks)) queueCloudSemesterSave();
       renderAllViews();
       renderCatalogSource();
       updateCloudSyncStatusUi();
@@ -4304,6 +4307,7 @@
           localStorage.setItem(getSemestersKey(), JSON.stringify(semesterList));
         }
         hasUnsavedAdminChanges = false;
+        unsavedChangesSemesterId = '';
         setCloudSyncStatus('idle');
         recomputeChainFlow('7');
         recomputeChainFlow('8');
@@ -4470,6 +4474,7 @@
       catalogDocumentMissing = false;
       adminSettingsLoadState = 'loading';
       semesterServerData = null;
+      unsavedChangesSemesterId = '';
       catalogMergeChoices.clear();
       teacherSelectionWindowLoaded = false;
       teacherSelectionWindowLoadError = '';
@@ -5037,6 +5042,13 @@
     function switchSemester(newSem) {
       if (inlineEditingSlot) {
         commitInlineCell();
+      }
+      if (newSem === currentSemester) return;
+      if (isAdmin && hasUnsavedAdminChanges && unsavedChangesSemesterId === currentSemester) {
+        const semesterSelect = document.getElementById('semester-select');
+        if (semesterSelect) semesterSelect.value = currentSemester;
+        alert(`${currentSemester} 的輪換資料尚未儲存。請先按 LOGO → 確認儲存。`);
+        return;
       }
       resetCatalogEditorForSemesterSwitch();
       currentSemester = newSem;
@@ -6357,7 +6369,6 @@
         }
       });
 
-      saveRotationDataToStorage();
     }
 
     // 全域防撞書驗證函式：確保同一時段絕無兩個班級採用同一書箱，且單一班級各時段不重複
