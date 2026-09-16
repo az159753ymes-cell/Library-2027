@@ -76,7 +76,7 @@ async function run() {
   assert.equal(confirmed.elements.get('catalog-source-updated-at').textContent, '③ 系統資料寫入雲端時間 2026/9/16 上午10:58:39。');
   assert.match(confirmed.elements.get('catalog-source-updated-at').innerHTML, /catalog-confirmation-upload-time/);
   assert.equal(confirmed.elements.get('catalog-source-semester-summary').textContent, '④ 學期設定已確認（班級、輪換安排）。');
-  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
+  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 選書設定已確定（開放時段、選書內容）。');
 
   const fontPending = createApp();
   fontPending.sandbox.old = old;
@@ -97,7 +97,7 @@ async function run() {
   assert.equal(confirmed.elements.get('catalog-source-status').textContent, '① 目前學期設定與 Firestore 正式資料不同；請在下方直接比對。');
   assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99（缺號 0，共 30 本）。');
   assert.equal(confirmed.elements.get('catalog-source-updated-at').textContent, '③ 系統資料寫入雲端時間 2026/9/16 上午10:58:39。');
-  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
+  assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 選書設定已確定（開放時段、選書內容）。');
 
   confirmed.run('semesterLoadState = "ready"; adminDataConfirmationComplete = true; hasUnsavedAdminChanges = true; renderCatalogSource();');
   assert.equal(confirmed.run('adminDataConfirmationComplete'), true, 'own unsaved draft must not revoke the completed gate');

@@ -4800,7 +4800,7 @@
         updatedAt.classList.remove('hidden');
         setCatalogConfirmationLine(semesterSummary, '④', '學期設定已確認（班級、輪換安排）。');
         semesterSummary.classList.remove('hidden');
-        setCatalogConfirmationLine(detail, '⑤', '教師選書開放時段與選書內容已確認。');
+        setCatalogConfirmationLine(detail, '⑤', '選書設定已確定（開放時段、選書內容）。');
         showDetail = true;
       } else if (canShowOfficialSummary && (isCatalogReview || isSemesterReview)) {
         setCatalogConfirmationLine(status, '①', isSemesterReview
@@ -4821,7 +4821,7 @@
         }
         if (teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError
           && teacherSelectionRecordsLoaded && !teacherSelectionRecordsLoadError) {
-          setCatalogConfirmationLine(detail, '⑤', '教師選書開放時段與選書內容已確認。');
+          setCatalogConfirmationLine(detail, '⑤', '選書設定已確定（開放時段、選書內容）。');
           showDetail = true;
         }
       } else {
