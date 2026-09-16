@@ -69,14 +69,23 @@ async function run() {
   confirmed.sandbox.old = old;
   confirmed.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; catalogServerSystemDataUploadedAt = "2026/9/16 上午10:58:39"; renderCatalogSource();');
   assert.equal(confirmed.elements.get('catalog-source-status').textContent, '① 已從 Firestore 伺服器讀取正式清冊。');
-  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99，無缺號，共 30 本。');
+  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99（缺號 0，共 30 本）。');
   assert.equal(confirmed.elements.get('catalog-source-updated-at').textContent, '③ 系統資料寫入雲端時間 2026/9/16 上午10:58:39。');
+  assert.match(confirmed.elements.get('catalog-source-updated-at').innerHTML, /catalog-confirmation-upload-time/);
   assert.equal(confirmed.elements.get('catalog-source-semester-summary').textContent, '④ 學期設定已確認（班級、輪換安排）。');
   assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
 
+  const lastBoxOnly = createApp();
+  lastBoxOnly.sandbox.multiBoxCatalog = [
+    { id: 1, code: '1', title: '第一箱', total: '20', maxNum: '20', missing: '2, 8' },
+    { id: 99, code: '99', title: '最後一箱', total: '28', maxNum: '30', missing: '4, 18' }
+  ];
+  lastBoxOnly.run('booksData = multiBoxCatalog; catalogLocalBooks = multiBoxCatalog; catalogServerBooks = multiBoxCatalog; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionRecordsLoaded = true; renderCatalogSource();');
+  assert.equal(lastBoxOnly.elements.get('catalog-source-summary').textContent, '② 正式清冊 2 本，最後編號 99（缺號 2，共 28 本）。');
+
   confirmed.run('semesterLoadState = "review"; renderCatalogSource();');
   assert.equal(confirmed.elements.get('catalog-source-status').textContent, '① 目前學期設定與 Firestore 正式資料不同；請在下方直接比對。');
-  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99，無缺號，共 30 本。');
+  assert.equal(confirmed.elements.get('catalog-source-summary').textContent, '② 正式清冊 1 本，最後編號 99（缺號 0，共 30 本）。');
   assert.equal(confirmed.elements.get('catalog-source-updated-at').textContent, '③ 系統資料寫入雲端時間 2026/9/16 上午10:58:39。');
   assert.equal(confirmed.elements.get('catalog-source-detail').textContent, '⑤ 教師選書開放時段與選書內容已確認。');
 
@@ -97,15 +106,68 @@ async function run() {
   const adoptSemesterServer = createApp();
   adoptSemesterServer.sandbox.old = old;
   adoptSemesterServer.sandbox.serverSemester = serverSemester;
-  adoptSemesterServer.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; currentSemester = "115-1"; gradeCounts = { g7: 2, g8: 1 }; rotationDates = {}; rotationSchedule = {}; grade8HistoryBooks = {}; semesterLocalData = buildCurrentSemesterSavePayload(); semesterServerData = serverSemester; semesterHasLocalCache = true; semesterLoadState = "review"; hasUnsavedAdminChanges = true; unsavedChangesSemesterId = currentSemester; applySemesterMerge();');
+  adoptSemesterServer.run('switchTab = tab => { currentActiveTab = tab; }; booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; currentSemester = "115-1"; gradeCounts = { g7: 2, g8: 1 }; rotationDates = {}; rotationSchedule = {}; grade8HistoryBooks = {}; semesterLocalData = buildCurrentSemesterSavePayload(); semesterServerData = serverSemester; semesterHasLocalCache = true; semesterLoadState = "review"; hasUnsavedAdminChanges = true; unsavedChangesSemesterId = currentSemester; applySemesterMerge();');
   assert.equal(adoptSemesterServer.run('semesterLoadState'), 'ready');
   assert.equal(adoptSemesterServer.run('hasUnsavedAdminChanges'), false, 'all-server semester merge discards the semester draft');
   assert.equal(adoptSemesterServer.run('unsavedChangesSemesterId'), '');
   assert.equal(adoptSemesterServer.run('semesterSignature(semesterLocalData) === semesterSignature(semesterServerData)'), true);
   assert.equal(adoptSemesterServer.run('isAdminDataConfirmationReady()'), true, 'all-server merge can enter the workspace without saving');
+  assert.equal(adoptSemesterServer.run('adminDataConfirmationComplete'), true, 'all-server semester merge must enter the workspace directly');
   adoptSemesterServer.run('adminDataConfirmationComplete = true; currentActiveTab = "catalog"; applySemesterCloudSnapshot({ exists: true, metadata: { hasPendingWrites: false }, data: () => serverSemester });');
   assert.equal(adoptSemesterServer.run('semesterLoadState'), 'ready', 'the matching server snapshot must not reopen review');
   assert.equal(adoptSemesterServer.run('adminDataConfirmationComplete'), true, 'the matching server snapshot must not send the admin back to confirmation');
+
+  const semanticLocalSemester = {
+    gradeCounts: { g7: '12', g8: 12, isConfigured: true },
+    rotationDates: { returnDate: '2027-01-20', issueDate: '2026-09-01', ignoredLegacyDate: 'ignore me' },
+    rotationSchedule: {
+      '701': {
+        p2: { code: 2, fromPlace: '衍生欄位', dueDate: '2026-10-01' },
+        p1: { code: 1, isSpecified: true, toPlace: '衍生欄位' }
+      },
+      '702': {}
+    },
+    grade8HistoryBooks: { '801': [2, '1', '2'], '802': [] }
+  };
+  const semanticServerSemester = {
+    gradeCounts: { g8: '12', g7: 12 },
+    rotationDates: { issueDate: '2026-09-01', returnDate: '2027-01-20' },
+    rotationSchedule: {
+      '701': {
+        p1: { code: '1', isSpecified: true },
+        p2: { code: '2' }
+      }
+    },
+    grade8HistoryBooks: { '801': ['1', '2'] }
+  };
+  const semanticParity = createApp();
+  semanticParity.sandbox.semanticLocalSemester = semanticLocalSemester;
+  semanticParity.sandbox.semanticServerSemester = semanticServerSemester;
+  assert.equal(semanticParity.run('semesterSignature(semanticLocalSemester) === semesterSignature(semanticServerSemester)'), true, 'legacy flags, numeric strings, key order, derived fields, and duplicate history must not create a conflict');
+  assert.equal(semanticParity.run('getSemesterDifferences(semanticLocalSemester, semanticServerSemester).length'), 0);
+
+  const meaningfulLocalSemester = JSON.parse(JSON.stringify(semanticServerSemester));
+  const meaningfulServerSemester = JSON.parse(JSON.stringify(semanticServerSemester));
+  meaningfulServerSemester.gradeCounts.g7 = 13;
+  meaningfulServerSemester.rotationDates.returnDate = '2027-01-21';
+  meaningfulServerSemester.rotationSchedule['701'].p2.code = '9';
+  meaningfulServerSemester.grade8HistoryBooks['801'] = ['1', '3'];
+  const meaningfulDiff = createApp();
+  meaningfulDiff.sandbox.meaningfulLocalSemester = meaningfulLocalSemester;
+  meaningfulDiff.sandbox.meaningfulServerSemester = meaningfulServerSemester;
+  assert.equal(meaningfulDiff.run('semesterSignature(meaningfulLocalSemester) === semesterSignature(meaningfulServerSemester)'), false);
+  assert.deepEqual(
+    JSON.parse(meaningfulDiff.run('JSON.stringify(getSemesterDifferences(meaningfulLocalSemester, meaningfulServerSemester))')),
+    [
+      { key: 'gradeCounts', label: '班級數設定', details: [{ label: '七年級班數', local: 12, server: 13 }] },
+      { key: 'rotationDates', label: '輪換日期', details: [{ label: '歸還日', local: '2027-01-20', server: '2027-01-21' }] },
+      { key: 'rotationSchedule', label: '輪換安排', details: [{ label: '701 班第二次輪換', local: '2 號書箱', server: '9 號書箱' }] },
+      { key: 'grade8HistoryBooks', label: '七、八年級閱讀紀錄', details: [{ label: '801 班閱讀紀錄', local: '1 號、2 號', server: '1 號、3 號' }] }
+    ],
+    'every meaningful difference must identify its field and both values'
+  );
+  meaningfulDiff.run('gradeCounts = meaningfulLocalSemester.gradeCounts; rotationDates = meaningfulLocalSemester.rotationDates; rotationSchedule = meaningfulLocalSemester.rotationSchedule; grade8HistoryBooks = meaningfulLocalSemester.grade8HistoryBooks; semesterLocalData = buildCurrentSemesterSavePayload(); semesterHasLocalCache = true; applySemesterCloudSnapshot({ exists: true, metadata: { hasPendingWrites: false }, data: () => meaningfulServerSemester });');
+  assert.equal(meaningfulDiff.run('semesterLoadState'), 'review', 'meaningful differences must still enter the merge flow');
 
   const mixedSemesterMerge = createApp();
   mixedSemesterMerge.sandbox.old = old;

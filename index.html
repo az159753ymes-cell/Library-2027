@@ -499,8 +499,11 @@
       vertical-align: .08em;
     }
 
-    body.admin-confirmation-mode #catalog-merge-panel:not(.hidden),
-    body.admin-confirmation-mode #semester-merge-panel:not(.hidden) {
+    .catalog-confirmation-upload-time {
+      color: var(--clay) !important;
+    }
+
+    body.admin-confirmation-mode #catalog-merge-panel:not(.hidden) {
       margin-top: 1.25rem;
       border: 1px solid rgba(216, 206, 190, .9);
       border-radius: 16px;
@@ -2497,11 +2500,10 @@
             <p class="mb-2">本機與正式清冊不同。請逐項選擇保留哪一份；確認合併後，再按下方「確認儲存」。</p>
             <div id="catalog-merge-rows" class="max-h-72 space-y-2 overflow-y-auto"></div>
           </div>
-          <div id="semester-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
-            <p class="mb-2">目前學期設定與正式資料不同。請逐類選擇保留來源；完成後再按下方「確認儲存」才會發布。</p>
+          </section>
+          <div id="semester-merge-panel" class="mt-3 hidden">
             <div id="semester-merge-rows" class="space-y-2"></div>
           </div>
-          </section>
         </section>
         <div id="home-confirmation-action-dock" aria-label="確認頁操作">
           <button id="home-apply-catalog-merge-btn" type="button" onclick="applyCatalogMerge()" class="hidden rounded-xl bg-[#2C5E43] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#224833]">確認合併至目前畫面</button>
@@ -4376,43 +4378,135 @@
       const labels = [];
       if (catalogServerBooks && catalogSignature(booksData) !== catalogSignature(catalogServerBooks)) labels.push('書箱清冊');
       if (semesterServerData) {
-        const serverValue = key => JSON.stringify(semesterServerData[key] ?? {});
-        if (JSON.stringify(gradeCounts) !== serverValue('gradeCounts')) labels.push('班級數設定');
-        if (JSON.stringify(rotationDates) !== serverValue('rotationDates')) labels.push('輪換日期');
-        if (JSON.stringify(rotationSchedule) !== serverValue('rotationSchedule')) labels.push('輪換安排');
-        if (JSON.stringify(grade8HistoryBooks) !== serverValue('grade8HistoryBooks')) labels.push('八年級閱讀紀錄');
+        getSemesterDifferences(buildCurrentSemesterSavePayload(), semesterServerData)
+          .forEach(difference => labels.push(difference.label));
       }
       return labels.length ? labels : ['目前學期設定'];
     }
 
-    function semesterSignature(data = {}) {
-      const normalize = value => Array.isArray(value)
-        ? value.map(normalize)
-        : value && typeof value === 'object'
-          ? Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize(value[key])]))
-          : value;
-      const normalizeSchedule = schedule => Object.fromEntries(Object.keys(schedule || {}).sort().map(classCode => {
+    const SEMESTER_DATE_FIELDS = [
+      ['issueDate', '發書日'],
+      ['exchange1CheckDate', '第一次檢查日'],
+      ['exchange1Date', '第一次輪換日'],
+      ['exchange2CheckDate', '第二次檢查日'],
+      ['exchange2Date', '第二次輪換日'],
+      ['returnDate', '歸還日']
+    ];
+    const SEMESTER_SLOTS = [['p1', '第一次'], ['p2', '第二次'], ['p3', '第三次']];
+    const SEMESTER_DIFFERENCE_FIELDS = [
+      ['gradeCounts', '班級數設定'],
+      ['rotationDates', '輪換日期'],
+      ['rotationSchedule', '輪換安排'],
+      ['grade8HistoryBooks', '七、八年級閱讀紀錄']
+    ];
+
+    function normalizeClassCount(value) {
+      const count = typeof value === 'string' ? Number(value.trim()) : Number(value);
+      return Number.isInteger(count) && count > 0 ? count : null;
+    }
+
+    function normalizeSemesterSchedule(schedule = {}) {
+      return Object.fromEntries(Object.keys(schedule || {}).sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true })).flatMap(classCode => {
         const classSchedule = schedule[classCode] || {};
-        const normalizedSlots = Object.fromEntries(['p1', 'p2', 'p3'].map(slotKey => {
+        const normalizedSlots = Object.fromEntries(SEMESTER_SLOTS.map(([slotKey]) => {
           const slot = classSchedule[slotKey];
           if (!slot || !slot.code) return [slotKey, null];
           return [slotKey, {
-            code: String(slot.code),
+            code: String(slot.code).trim(),
             isSpecified: slot.isSpecified === true,
             manualSpecified: slot.manualSpecified === true,
-            selectionSource: slot.selectionSource || '',
+            selectionSource: String(slot.selectionSource || ''),
             chainBridge: slot.chainBridge === true
           }];
         }));
-        return [classCode, normalizedSlots];
+        // 空白班級與不存在的班級在系統中效果相同，不視為差異。
+        return Object.values(normalizedSlots).some(Boolean) ? [[classCode, normalizedSlots]] : [];
       }));
-      return JSON.stringify(normalize({
-        gradeCounts: data.gradeCounts || {},
-        rotationDates: data.rotationDates || {},
+    }
+
+    function normalizeSemesterHistory(history = {}) {
+      return Object.fromEntries(Object.keys(history || {}).sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true })).flatMap(classCode => {
+        const codes = Array.isArray(history[classCode])
+          ? [...new Set(history[classCode].map(code => String(code).trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }))
+          : [];
+        // 閱讀紀錄僅判斷是否讀過；排列順序與重複項目不影響功能。
+        return codes.length ? [[classCode, codes]] : [];
+      }));
+    }
+
+    function normalizeSemesterData(data = {}) {
+      const source = data || {};
+      return {
+        // isConfigured 為舊版標記，不影響班級數或任何系統功能，故不納入比對。
+        gradeCounts: {
+          g7: normalizeClassCount(source.gradeCounts?.g7),
+          g8: normalizeClassCount(source.gradeCounts?.g8)
+        },
+        rotationDates: Object.fromEntries(SEMESTER_DATE_FIELDS.map(([field]) => [field, String(source.rotationDates?.[field] || '').trim()])),
         // fromPlace、toPlace、dueDate 均由輪換資料即時計算，不能造成與正式資料的假差異。
-        rotationSchedule: normalizeSchedule(data.rotationSchedule),
-        grade8HistoryBooks: data.grade8HistoryBooks || {}
-      }));
+        rotationSchedule: normalizeSemesterSchedule(source.rotationSchedule),
+        grade8HistoryBooks: normalizeSemesterHistory(source.grade8HistoryBooks)
+      };
+    }
+
+    function semesterSignature(data = {}) {
+      return JSON.stringify(normalizeSemesterData(data));
+    }
+
+    function formatScheduleSlot(slot) {
+      if (!slot?.code) return '未安排';
+      const notes = [];
+      if (slot.selectionSource === 'teacher') notes.push('教師選書');
+      if (slot.manualSpecified) notes.push('手動指定');
+      else if (slot.isSpecified) notes.push('指定');
+      if (slot.chainBridge) notes.push('銜接輪換');
+      return `${slot.code} 號書箱${notes.length ? `（${notes.join('、')}）` : ''}`;
+    }
+
+    function getSemesterDifferenceDetails(key, localValue, serverValue) {
+      if (key === 'gradeCounts') {
+        return [['g7', '七年級班數'], ['g8', '八年級班數']]
+          .filter(([field]) => localValue[field] !== serverValue[field])
+          .map(([field, label]) => ({ label, local: localValue[field] ?? '未設定', server: serverValue[field] ?? '未設定' }));
+      }
+      if (key === 'rotationDates') {
+        return SEMESTER_DATE_FIELDS
+          .filter(([field]) => localValue[field] !== serverValue[field])
+          .map(([field, label]) => ({ label, local: localValue[field] || '未設定', server: serverValue[field] || '未設定' }));
+      }
+      if (key === 'rotationSchedule') {
+        const classes = [...new Set([...Object.keys(localValue), ...Object.keys(serverValue)])]
+          .sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
+        return classes.flatMap(classCode => SEMESTER_SLOTS
+          .filter(([slot]) => JSON.stringify(localValue[classCode]?.[slot] || null) !== JSON.stringify(serverValue[classCode]?.[slot] || null))
+          .map(([slot, label]) => ({
+            label: `${classCode} 班${label}輪換`,
+            local: formatScheduleSlot(localValue[classCode]?.[slot]),
+            server: formatScheduleSlot(serverValue[classCode]?.[slot])
+          })));
+      }
+      if (key === 'grade8HistoryBooks') {
+        const classes = [...new Set([...Object.keys(localValue), ...Object.keys(serverValue)])]
+          .sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
+        return classes
+          .filter(classCode => JSON.stringify(localValue[classCode] || []) !== JSON.stringify(serverValue[classCode] || []))
+          .map(classCode => ({
+            label: `${classCode} 班閱讀紀錄`,
+            local: (localValue[classCode] || []).length ? localValue[classCode].map(code => `${code} 號`).join('、') : '無紀錄',
+            server: (serverValue[classCode] || []).length ? serverValue[classCode].map(code => `${code} 號`).join('、') : '無紀錄'
+          }));
+      }
+      return [];
+    }
+
+    function getSemesterDifferences(localData = {}, serverData = {}) {
+      const local = normalizeSemesterData(localData);
+      const server = normalizeSemesterData(serverData);
+      return SEMESTER_DIFFERENCE_FIELDS.map(([key, label]) => {
+        const details = getSemesterDifferenceDetails(key, local[key], server[key]);
+        return details.length ? { key, label, details } : null;
+      }).filter(Boolean);
     }
 
     function updateSemesterLocalCache(data = buildCurrentSemesterSavePayload()) {
@@ -4487,50 +4581,6 @@
       return true;
     }
 
-    function describeSemesterDifference(key, value) {
-      const data = value || {};
-      if (key === 'gradeCounts') {
-        const grade7 = data.g7 ?? '未設定';
-        const grade8 = data.g8 ?? '未設定';
-        return `七年級 ${grade7} 班；八年級 ${grade8} 班`;
-      }
-      if (key === 'rotationDates') {
-        const labels = {
-          issueDate: '發書日', exchange1CheckDate: '第一次檢查日', exchange1Date: '第一次輪換日',
-          exchange2CheckDate: '第二次檢查日', exchange2Date: '第二次輪換日', returnDate: '歸還日'
-        };
-        const details = Object.entries(labels)
-          .map(([field, label]) => `${label}：${data[field] || '未設定'}`);
-        return details.join('；');
-      }
-      if (key === 'rotationSchedule') {
-        const slotLabels = { p1: '第一次', p2: '第二次', p3: '第三次' };
-        const classes = Object.keys(data).sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
-        if (!classes.length) return '尚未安排任何班級的輪換書箱';
-        return classes.map(classCode => {
-          const schedule = data[classCode] || {};
-          const slots = Object.entries(slotLabels).map(([slot, label]) => {
-            const item = schedule[slot];
-            if (!item?.code) return `${label}：未安排`;
-            const source = item.selectionSource === 'teacher' ? '（教師選書）' : '';
-            return `${label}：${item.code} 號書箱${source}`;
-          });
-          return `${classCode} 班：${slots.join('、')}`;
-        }).join('；');
-      }
-      if (key === 'grade8HistoryBooks') {
-        const classes = Object.keys(data).sort((a, b) => a.localeCompare(b, 'zh-TW', { numeric: true }));
-        if (!classes.length) return '尚無七、八年級閱讀紀錄';
-        return classes.map(classCode => {
-          const books = Array.isArray(data[classCode]) && data[classCode].length
-            ? data[classCode].map(code => `${code} 號`).join('、')
-            : '無紀錄';
-          return `${classCode} 班：${books}`;
-        }).join('；');
-      }
-      return '未設定';
-    }
-
     function renderSemesterMergePanel() {
       const panel = document.getElementById('semester-merge-panel');
       const rows = document.getElementById('semester-merge-rows');
@@ -4544,19 +4594,12 @@
       if (semesterLoadState !== 'review') return;
       const local = semesterLocalData || buildCurrentSemesterSavePayload();
       const server = semesterServerData || {};
-      const fields = [
-        ['gradeCounts', '班級數設定'],
-        ['rotationDates', '輪換日期'],
-        ['rotationSchedule', '輪換安排'],
-        ['grade8HistoryBooks', '七、八年級閱讀紀錄']
-      ].filter(([key]) => JSON.stringify(local[key] || {}) !== JSON.stringify(server[key] || {}));
-      rows.innerHTML = fields.map(([key, label]) => {
+      const fields = getSemesterDifferences(local, server);
+      rows.innerHTML = fields.map(({ key, label, details }) => {
         const choice = semesterMergeChoices.get(key) || 'server';
-        const localSummary = describeSemesterDifference(key, local[key]);
-        const serverSummary = describeSemesterDifference(key, server[key]);
+        const detailHtml = details.map(detail => `<li><span class="font-bold">${escapePrintText(detail.label)}：</span>本機資料 ${escapePrintText(String(detail.local))}；正式資料 ${escapePrintText(String(detail.server))}</li>`).join('');
         return `<div class="rounded-lg border border-[#E8E1D5] p-3"><span class="font-bold text-[#2C5E43]">${label}</span>
-          <span class="mt-1 block break-words text-sm font-medium">本機資料：${escapePrintText(localSummary)}</span>
-          <span class="block break-words text-sm font-medium">正式資料：${escapePrintText(serverSummary)}</span>
+          <ul class="mt-1 list-disc space-y-1 break-words pl-5 text-sm font-medium">${detailHtml}</ul>
           <select data-semester-merge-key="${key}" class="mt-2 rounded border border-[#B8A894] bg-white px-2 py-1">
             <option value="server" ${choice === 'server' ? 'selected' : ''}>保留正式資料</option>
             <option value="local" ${choice === 'local' ? 'selected' : ''}>保留本機資料</option>
@@ -4597,14 +4640,22 @@
       }
       renderAllViews();
       renderCatalogSource();
+      // 全部採用正式資料且已無待儲存內容時，比對完成即可直接進入工作臺。
+      if (allServerData && !semesterDiffers && isAdminDataConfirmationReady()) enterAdminWorkspace();
     }
 
-    function setCatalogConfirmationLine(element, number, text) {
+    function setCatalogConfirmationLine(element, number, text, highlightedText = '') {
       element.textContent = `${number} ${text}`;
-      element.innerHTML = `<span class="catalog-confirmation-number" aria-hidden="true">${number}</span> ${escapePrintText(text)}`;
+      const safeText = escapePrintText(text);
+      const safeHighlightedText = escapePrintText(highlightedText);
+      const formattedText = highlightedText
+        ? safeText.replace(safeHighlightedText, `<span class="catalog-confirmation-upload-time">${safeHighlightedText}</span>`)
+        : safeText;
+      element.innerHTML = `<span class="catalog-confirmation-number" aria-hidden="true">${number}</span> ${formattedText}`;
     }
 
     function renderCatalogSource() {
+      const sourcePanel = document.getElementById('catalog-source-panel');
       const status = document.getElementById('catalog-source-status');
       const summary = document.getElementById('catalog-source-summary');
       const updatedAt = document.getElementById('catalog-source-updated-at');
@@ -4648,21 +4699,23 @@
       const lastCode = (catalogServerBooks || []).reduce((last, book) =>
         Number(book.code) > Number(last) ? String(book.code) : last, '0');
       const officialBooks = catalogServerBooks || [];
-      const booksWithMissingNumbers = officialBooks.filter(book => parseMissingList(book.missing).length > 0);
-      const officialBookTotal = officialBooks.reduce((total, book) => {
-        const savedTotalText = String(book.total ?? '').replace(/本$/g, '').trim();
-        const savedTotal = savedTotalText ? Number(savedTotalText) : Number.NaN;
-        if (Number.isFinite(savedTotal)) return total + savedTotal;
-        const maxNumber = Number(String(book.maxNum ?? '').replace(/本$/g, '').trim());
-        return total + (Number.isFinite(maxNumber) ? Math.max(0, maxNumber - parseMissingList(book.missing).length) : 0);
-      }, 0);
-      const officialCatalogSummary = `正式清冊 ${officialBooks.length} 本，最後編號 ${lastCode}，${booksWithMissingNumbers.length ? `有 ${booksWithMissingNumbers.length} 箱有缺號` : '無缺號'}，共 ${officialBookTotal} 本。`;
+      const lastBook = officialBooks.find(book => String(book.code) === lastCode);
+      const lastBookMissingCount = parseMissingList(lastBook?.missing).length;
+      const lastBookTotalText = String(lastBook?.total ?? '').replace(/本$/g, '').trim();
+      const lastBookTotal = lastBookTotalText ? Number(lastBookTotalText) : Number.NaN;
+      const lastBookMaxNumber = Number(String(lastBook?.maxNum ?? '').replace(/本$/g, '').trim());
+      const lastBookAvailableCount = Number.isFinite(lastBookTotal)
+        ? lastBookTotal
+        : (Number.isFinite(lastBookMaxNumber) ? Math.max(0, lastBookMaxNumber - lastBookMissingCount) : 0);
+      const officialCatalogSummary = `正式清冊 ${officialBooks.length} 本，最後編號 ${lastCode}（缺號 ${lastBookMissingCount}，共 ${lastBookAvailableCount} 本）。`;
       const serverDetail = catalogServerBooks && !catalogDocumentMissing
         ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}${teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError ? '；教師選書設定已確認' : ''}。`
         : '';
       const officialDataConfirmed = isAdminDataConfirmationReady();
       const isCatalogReview = catalogLoadState === 'review';
       const isSemesterReview = semesterLoadState === 'review';
+      // 單獨處理學期差異時，直接顯示每個實際問題的卡片，不再加上資料來源提示卡。
+      sourcePanel?.classList.toggle('hidden', isSemesterReview && !isCatalogReview);
       const canShowOfficialSummary = Boolean(catalogServerBooks && !catalogDocumentMissing);
       let showDetail = false;
       if (officialDataConfirmed) {
@@ -4670,7 +4723,8 @@
         status.className = '';
         setCatalogConfirmationLine(summary, '②', officialCatalogSummary);
         summary.classList.remove('hidden');
-        setCatalogConfirmationLine(updatedAt, '③', `系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt || '尚無紀錄'}。`);
+        const uploadedAt = catalogServerSystemDataUploadedAt || '尚無紀錄';
+        setCatalogConfirmationLine(updatedAt, '③', `系統資料寫入雲端時間 ${uploadedAt}。`, uploadedAt);
         updatedAt.classList.remove('hidden');
         setCatalogConfirmationLine(semesterSummary, '④', '學期設定已確認（班級、輪換安排）。');
         semesterSummary.classList.remove('hidden');
@@ -4683,7 +4737,8 @@
         status.className = '';
         setCatalogConfirmationLine(summary, '②', officialCatalogSummary);
         summary.classList.remove('hidden');
-        setCatalogConfirmationLine(updatedAt, '③', `系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt || '尚無紀錄'}。`);
+        const uploadedAt = catalogServerSystemDataUploadedAt || '尚無紀錄';
+        setCatalogConfirmationLine(updatedAt, '③', `系統資料寫入雲端時間 ${uploadedAt}。`, uploadedAt);
         updatedAt.classList.remove('hidden');
         if (!isSemesterReview && semesterLoadState === 'ready') {
           setCatalogConfirmationLine(semesterSummary, '④', '學期設定已確認（班級、輪換安排）。');
@@ -4766,6 +4821,8 @@
       renderAllViews();
       renderCatalogSource();
       updateCloudSyncStatusUi();
+      // 清冊同樣在全部採用正式資料後直接進入，不再要求額外點擊「進入書箱清冊」。
+      if (isAdminDataConfirmationReady()) enterAdminWorkspace();
     }
 
     function downloadLocalCatalogBackup() {
