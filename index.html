@@ -1957,7 +1957,7 @@
         color: #000000 !important;
         display: block !important;
       }
-      aside, .no-print, #form-card, #rotation-screen-view, #tab-catalog {
+      aside, .no-print, #form-card, #rotation-screen-view, #tab-home, #tab-catalog {
         display: none !important;
       }
       #tab-rotation {
@@ -2134,6 +2134,11 @@
 
     <!-- 導航選單按鈕 (白底綠字圓角卡片 / 透光白字) -->
     <nav class="flex-1 p-4 space-y-2.5">
+      <button id="tab-home-btn" onclick="switchTab('home')"
+        class="w-full px-5 py-3.5 rounded-xl font-bold text-left text-base lg:text-lg transition-all duration-200 bg-[#FFFDF6]/95 text-[#2F6057] shadow-sm flex items-center gap-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5v-9Z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21v-6h6v6"/></svg>
+        <span>首頁</span>
+      </button>
       <button id="tab-catalog-btn" onclick="switchTab('catalog')"
         class="w-full px-5 py-3.5 rounded-xl font-bold text-left text-base lg:text-lg transition-all duration-200 bg-[#FFFDF6]/95 text-[#2F6057] shadow-sm flex items-center gap-3">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2205,6 +2210,7 @@
     </button>
     <img id="mobile-teacher-library-wordmark" src="assets/library-wordmark-eucalyptus-brush-v4-600.webp" alt="LIBRARY 圖書館" class="mobile-brand hidden" decoding="async" />
     <nav id="mobile-admin-nav" class="mobile-admin-nav hidden" aria-label="管理功能">
+      <button id="mobile-tab-home-btn" type="button" onclick="switchTab('home')" class="mobile-nav-button">首頁</button>
       <button id="mobile-tab-catalog-btn" type="button" onclick="switchTab('catalog')" class="mobile-nav-button">書箱清冊</button>
       <button id="mobile-tab-rotation-btn" type="button" onclick="switchTab('rotation')" class="mobile-nav-button">班際輪換</button>
       <button id="mobile-tab-selection-btn" type="button" onclick="switchTab('selection')" class="mobile-nav-button">教師選書</button>
@@ -2290,10 +2296,12 @@
         </div>
       </div>
 
-      <!-- 頁籤一：書箱清冊頁面 -->
-      <div id="tab-catalog">
-
-        <section id="catalog-source-panel" class="mb-4 rounded-2xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base font-semibold leading-6 text-[#52796F] no-print" role="status" aria-live="polite">
+      <!-- 管理員首頁：先確認本機與正式資料，再進入工作頁面。 -->
+      <div id="tab-home" class="hidden space-y-6">
+        <section class="rounded-2xl border border-[#D8CEBE] bg-[#FFFDF9] p-5 shadow-sm sm:p-6" aria-labelledby="admin-home-title">
+          <h3 id="admin-home-title" class="text-2xl font-extrabold text-[#2C5E43]">資料確認</h3>
+          <p class="mt-2 text-base leading-6 text-[#52796F]">先確認此裝置與 Firestore 的共用清冊及目前學期設定，再進入書箱清冊。</p>
+          <section id="catalog-source-panel" class="mt-5 rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base font-semibold leading-6 text-[#52796F]" role="status" aria-live="polite">
           <p id="catalog-source-status">尚未取得正式清冊，正在檢查 Firestore。</p>
           <p id="catalog-source-detail" class="mt-1"></p>
           <div id="catalog-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
@@ -2301,7 +2309,18 @@
             <div id="catalog-merge-rows" class="max-h-72 space-y-2 overflow-y-auto"></div>
             <button type="button" onclick="applyCatalogMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認合併至目前畫面</button>
           </div>
+          <div id="semester-merge-panel" class="mt-3 hidden border-t border-[#E8E1D5] pt-3">
+            <p class="mb-2">目前學期設定與正式資料不同。請逐類選擇保留來源；完成後仍須按 LOGO → 確認儲存才會發布。</p>
+            <div id="semester-merge-rows" class="space-y-2"></div>
+            <button type="button" onclick="applySemesterMerge()" class="mt-3 rounded-lg bg-[#2C5E43] px-4 py-2 font-bold text-white">確認設定至目前畫面</button>
+          </div>
+          </section>
+          <button id="home-enter-catalog-btn" type="button" onclick="switchTab('catalog')" class="mt-5 hidden rounded-xl bg-[#2C5E43] px-5 py-3 font-bold text-white shadow-sm transition hover:bg-[#224833]">進入書箱清冊</button>
         </section>
+      </div>
+
+      <!-- 頁籤一：書箱清冊頁面 -->
+      <div id="tab-catalog" class="hidden">
 
         <section class="wugao-banner relative overflow-hidden rounded-2xl border mb-6 no-print" aria-label="五誥棧圖書館橫幅">
           <img src="assets/wugao-library-banner-v5-1500.webp" alt="五誥棧圖書館藝術橫幅，長髮女學生在窗邊閱讀" class="w-full h-full object-cover" fetchpriority="high" />
@@ -2896,6 +2915,10 @@
     let catalogDocumentMissing = false;
     let adminSettingsLoadState = 'loading';
     let semesterServerData = null;
+    let semesterLocalData = null;
+    let semesterLoadState = 'loading';
+    let semesterHasLocalCache = false;
+    let semesterMergeChoices = new Map();
     let catalogMergeChoices = new Map();
     let teacherListenersSemesterId = '';
     let selectionRecords = {};
@@ -3070,6 +3093,7 @@
       const adminCharacter = document.getElementById('admin-character-sign-out');
       const teacherGuide = document.getElementById('teacher-sidebar-guide');
       const action = document.getElementById('header-action-container');
+      const homeBtn = document.getElementById('tab-home-btn');
       const catalogBtn = document.getElementById('tab-catalog-btn');
       const rotationBtn = document.getElementById('tab-rotation-btn');
       const selectionBtn = document.getElementById('tab-selection-btn');
@@ -3101,6 +3125,7 @@
         hideTeacherGuideBubble();
         closeTeacherLoginReminder();
       }
+      if (homeBtn) homeBtn.classList.toggle('hidden', !isAdmin);
       if (catalogBtn) catalogBtn.classList.toggle('hidden', !isAdmin);
       if (rotationBtn) rotationBtn.classList.toggle('hidden', !isAdmin);
       if (selectionBtn) selectionBtn.classList.remove('hidden');
@@ -3115,7 +3140,7 @@
       if (mobileSignOut) mobileSignOut.classList.toggle('hidden', !currentUser);
       if (mobileTeacherClass) mobileTeacherClass.textContent = teacherClassCode ? `（${teacherClassCode}書箱）` : '';
       if (appMain) appMain.classList.toggle('teacher-mobile-view', Boolean(currentUser) && !isAdmin);
-      ['catalog', 'rotation', 'selection'].forEach(tabName => {
+      ['home', 'catalog', 'rotation', 'selection'].forEach(tabName => {
         const mobileTab = document.getElementById(`mobile-tab-${tabName}-btn`);
         if (!mobileTab) return;
         const isActive = isAdmin && currentActiveTab === tabName;
@@ -3793,6 +3818,8 @@
     }
 
     function queueCloudSemesterSave() {
+      semesterLocalData = buildCurrentSemesterSavePayload();
+      semesterHasLocalCache = true;
       unsavedChangesSemesterId = currentSemester;
       markAdminChangesUnsaved();
     }
@@ -4029,6 +4056,8 @@
         if (!snapshot.exists) {
           // 正式資料不存在時不可用瀏覽器快取自動建立，避免舊資料覆寫剛完成的發布或還原。
           setCloudSyncStatus('waiting');
+          semesterLoadState = 'missing';
+          renderCatalogSource();
           console.warn('找不到目前學期的雲端資料；已停止自動回寫本機暫存。');
           return;
         }
@@ -4036,7 +4065,18 @@
         // 管理員已在畫面上修改、但尚未按 LIBRARY 正式儲存時，不能讓任何
         // 雲端回傳（例如另存教師選書開放時段所觸發的快照）蓋回舊清冊。
         // 否則新建書箱會先在畫面消失，接著被當成舊資料發布並從教師端移除。
-        if (hasUnsavedAdminChanges) return;
+        const localSemester = semesterLocalData || buildCurrentSemesterSavePayload();
+        const semesterDiffers = semesterSignature(localSemester) !== semesterSignature(semesterServerData);
+        if (hasUnsavedAdminChanges && unsavedChangesSemesterId === currentSemester) {
+          semesterLoadState = 'ready';
+          renderCatalogSource();
+          return;
+        }
+        if (semesterHasLocalCache && semesterDiffers) {
+          semesterLoadState = 'review';
+          renderCatalogSource();
+          return;
+        }
         if (pendingCloudSemesterSaves > 0 && !snapshot.metadata.hasPendingWrites) return;
         const data = snapshot.data();
         gradeCounts = data.gradeCounts || gradeCounts;
@@ -4047,12 +4087,17 @@
         localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
         localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
         localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
+        semesterLocalData = buildCurrentSemesterSavePayload();
+        semesterHasLocalCache = true;
+        semesterLoadState = 'ready';
         recomputeChainFlow('7');
         recomputeChainFlow('8');
         if (isAdmin && !hasUnsavedAdminChanges) setCloudSyncStatus('idle');
         renderAllViews();
       }, error => {
+        semesterLoadState = 'failed';
         setCloudSyncStatus('failed');
+        renderCatalogSource();
         console.error('讀取學期資料失敗：', error);
       });
 
@@ -4075,11 +4120,13 @@
         teacherSelectionWindowLoadError = '';
         setTeacherSelectionWindowSaveBusy(false);
         renderSelectionView();
+        renderCatalogSource();
       }, error => {
         teacherSelectionWindowLoaded = false;
         teacherSelectionWindowLoadError = '無法讀取雲端開放時段。';
         setTeacherSelectionWindowSaveBusy(false);
         setTeacherSelectionWindowSaveMessage('無法讀取雲端開放時段，請確認網路後重新登入。');
+        renderCatalogSource();
         console.error('讀取管理員教師選書時段失敗：', error);
       });
     }
@@ -4118,6 +4165,85 @@
       return labels.length ? labels : ['目前學期設定'];
     }
 
+    function semesterSignature(data = {}) {
+      const normalize = value => Array.isArray(value)
+        ? value.map(normalize)
+        : value && typeof value === 'object'
+          ? Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize(value[key])]))
+          : value;
+      return JSON.stringify(normalize({
+        gradeCounts: data.gradeCounts || {},
+        rotationDates: data.rotationDates || {},
+        rotationSchedule: data.rotationSchedule || {},
+        grade8HistoryBooks: data.grade8HistoryBooks || {}
+      }));
+    }
+
+    function renderSemesterMergePanel() {
+      const panel = document.getElementById('semester-merge-panel');
+      const rows = document.getElementById('semester-merge-rows');
+      const enter = document.getElementById('home-enter-catalog-btn');
+      if (!panel || !rows || !enter) return;
+      const canEnter = catalogLoadState === 'ready' && adminSettingsLoadState === 'ready'
+        && semesterLoadState === 'ready' && teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError;
+      enter.classList.toggle('hidden', !canEnter);
+      panel.classList.toggle('hidden', semesterLoadState !== 'review');
+      if (semesterLoadState !== 'review') return;
+      const local = semesterLocalData || buildCurrentSemesterSavePayload();
+      const server = semesterServerData || {};
+      const fields = [
+        ['gradeCounts', '班級數設定'],
+        ['rotationDates', '輪換日期'],
+        ['rotationSchedule', '輪換安排'],
+        ['grade8HistoryBooks', '七、八年級閱讀紀錄']
+      ].filter(([key]) => JSON.stringify(local[key] || {}) !== JSON.stringify(server[key] || {}));
+      rows.innerHTML = fields.map(([key, label]) => {
+        const choice = semesterMergeChoices.get(key) || 'server';
+        const localSummary = JSON.stringify(local[key] || {});
+        const serverSummary = JSON.stringify(server[key] || {});
+        return `<div class="rounded-lg border border-[#E8E1D5] p-3"><span class="font-bold text-[#2C5E43]">${label}</span>
+          <span class="mt-1 block break-all text-sm font-medium">本機：${escapePrintText(localSummary)}</span>
+          <span class="block break-all text-sm font-medium">正式：${escapePrintText(serverSummary)}</span>
+          <select data-semester-merge-key="${key}" class="mt-2 rounded border border-[#B8A894] bg-white px-2 py-1">
+            <option value="server" ${choice === 'server' ? 'selected' : ''}>保留正式資料</option>
+            <option value="local" ${choice === 'local' ? 'selected' : ''}>保留本機資料</option>
+          </select></div>`;
+      }).join('');
+      rows.querySelectorAll('[data-semester-merge-key]').forEach(select => {
+        select.onchange = () => semesterMergeChoices.set(select.dataset.semesterMergeKey, select.value);
+      });
+    }
+
+    function applySemesterMerge() {
+      if (!requireAdmin() || semesterLoadState !== 'review') return;
+      const local = semesterLocalData || buildCurrentSemesterSavePayload();
+      const server = semesterServerData || {};
+      document.querySelectorAll('[data-semester-merge-key]').forEach(select => {
+        semesterMergeChoices.set(select.dataset.semesterMergeKey, select.value);
+      });
+      const merged = {};
+      ['gradeCounts', 'rotationDates', 'rotationSchedule', 'grade8HistoryBooks'].forEach(key => {
+        const source = semesterMergeChoices.get(key) || 'server';
+        merged[key] = JSON.parse(JSON.stringify((source === 'local' ? local : server)[key] || {}));
+      });
+      gradeCounts = merged.gradeCounts;
+      rotationDates = merged.rotationDates;
+      rotationSchedule = merged.rotationSchedule;
+      grade8HistoryBooks = merged.grade8HistoryBooks;
+      localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
+      localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
+      localStorage.setItem(getRotationKey(), JSON.stringify(rotationSchedule));
+      localStorage.setItem(getGrade8HistoryKey(), JSON.stringify(grade8HistoryBooks));
+      semesterLocalData = buildCurrentSemesterSavePayload();
+      semesterHasLocalCache = true;
+      semesterLoadState = 'ready';
+      semesterMergeChoices.clear();
+      if (semesterSignature(semesterLocalData) !== semesterSignature(semesterServerData)) queueCloudSemesterSave();
+      recomputeChainFlow();
+      renderAllViews();
+      renderCatalogSource();
+    }
+
     function renderCatalogSource() {
       const status = document.getElementById('catalog-source-status');
       const detail = document.getElementById('catalog-source-detail');
@@ -4131,8 +4257,18 @@
         review: catalogDocumentMissing
           ? 'Firestore 正式清冊不存在；本機資料已保留，請先檢查差異再決定是否建立。'
           : '已讀取正式清冊，但它與本機清冊不同；目前顯示保留的本機資料。',
-        ready: adminSettingsLoadState !== 'ready'
+        ready: semesterLoadState === 'review'
+          ? '目前學期設定與 Firestore 正式資料不同；請在下方直接比對。'
+          : adminSettingsLoadState !== 'ready'
           ? '已取得正式清冊，但學期設定尚未從伺服器確認；目前不能儲存。'
+          : semesterLoadState === 'loading'
+          ? '已取得正式清冊，正在確認目前學期設定。'
+          : semesterLoadState === 'failed'
+          ? '目前學期設定讀取失敗；請檢查連線與權限。'
+          : teacherSelectionWindowLoadError
+          ? '教師選書設定讀取失敗；請檢查連線與權限。'
+          : !teacherSelectionWindowLoaded
+          ? '已取得清冊與目前學期設定，正在確認教師選書設定。'
           : hasUnsavedAdminChanges
           ? `已從 Firestore 伺服器讀取正式清冊；尚未儲存：${getUnsavedAdminChangeLabels().join('、')}。`
           : '已從 Firestore 伺服器讀取正式清冊。'
@@ -4140,12 +4276,13 @@
       const lastCode = (catalogServerBooks || []).reduce((last, book) =>
         Number(book.code) > Number(last) ? String(book.code) : last, '0');
       const serverDetail = catalogServerBooks && !catalogDocumentMissing
-        ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}。`
+        ? `正式清冊 ${catalogServerBooks.length} 本（最後編號 ${lastCode}）${catalogServerSystemDataUploadedAt ? `；系統資料寫入雲端時間 ${catalogServerSystemDataUploadedAt}` : '；尚無系統資料寫入雲端紀錄'}${teacherSelectionWindowLoaded && !teacherSelectionWindowLoadError ? '；教師選書設定已確認' : ''}。`
         : '';
       status.textContent = labels[catalogLoadState] || labels.loading;
       detail.textContent = serverDetail;
       detail.classList.toggle('hidden', !serverDetail);
       panel.classList.toggle('hidden', catalogLoadState !== 'review');
+      renderSemesterMergePanel();
       if (catalogLoadState !== 'review') return;
       const localByCode = new Map((catalogLocalBooks || []).map(book => [String(book.code), book]));
       const serverByCode = new Map((catalogServerBooks || []).map(book => [String(book.code), book]));
@@ -4474,6 +4611,10 @@
       catalogDocumentMissing = false;
       adminSettingsLoadState = 'loading';
       semesterServerData = null;
+      semesterLocalData = null;
+      semesterLoadState = 'loading';
+      semesterHasLocalCache = false;
+      semesterMergeChoices.clear();
       unsavedChangesSemesterId = '';
       catalogMergeChoices.clear();
       teacherSelectionWindowLoaded = false;
@@ -4509,7 +4650,7 @@
         if (latestSemester) currentSemester = latestSemester.id;
         loadAllData();
         renderCatalogSource();
-        switchTab('catalog');
+        switchTab('home');
       } else {
         booksData = [];
         rotationDates = { issueDate: '', exchange1CheckDate: '', exchange1Date: '', exchange2CheckDate: '', exchange2Date: '', returnDate: '' };
@@ -5099,6 +5240,10 @@
 
       if (catalogLoadState !== 'ready') catalogLocalBooks = JSON.parse(JSON.stringify(booksData));
       const storedCounts = localStorage.getItem(getGradeCountsKey());
+      const storedDates = localStorage.getItem(getDatesKey());
+      const storedRotation = localStorage.getItem(getRotationKey());
+      const storedHistory = localStorage.getItem(getGrade8HistoryKey());
+      semesterHasLocalCache = Boolean(storedCounts || storedDates || storedRotation || storedHistory);
       if (storedCounts) {
         try { gradeCounts = JSON.parse(storedCounts); } catch (e) { gradeCounts = { ...DEFAULT_GRADE_COUNTS }; }
       } else {
@@ -5106,7 +5251,6 @@
         localStorage.setItem(getGradeCountsKey(), JSON.stringify(gradeCounts));
       }
 
-      const storedDates = localStorage.getItem(getDatesKey());
       if (storedDates) {
         try { rotationDates = JSON.parse(storedDates); } catch (e) {
           rotationDates = { ...(DEFAULT_ROTATION_DATES_BY_SEMESTER[currentSemester] || { issueDate: '', exchange1Date: '', exchange2Date: '', returnDate: '' }) };
@@ -5116,7 +5260,6 @@
         localStorage.setItem(getDatesKey(), JSON.stringify(rotationDates));
       }
 
-      const storedRotation = localStorage.getItem(getRotationKey());
       if (storedRotation) {
         try { rotationSchedule = JSON.parse(storedRotation); } catch (e) {
           rotationSchedule = JSON.parse(JSON.stringify(DEFAULT_ROTATION_SCHEDULE_BY_SEMESTER[currentSemester] || {}));
@@ -5125,7 +5268,6 @@
         rotationSchedule = JSON.parse(JSON.stringify(DEFAULT_ROTATION_SCHEDULE_BY_SEMESTER[currentSemester] || {}));
       }
 
-      const storedHistory = localStorage.getItem(getGrade8HistoryKey());
       if (storedHistory) {
         try { grade8HistoryBooks = JSON.parse(storedHistory); } catch (e) {
           grade8HistoryBooks = JSON.parse(JSON.stringify(DEFAULT_GRADE8_HISTORY_BOOKS));
@@ -5137,6 +5279,8 @@
 
       recomputeChainFlow('7');
       recomputeChainFlow('8');
+      semesterLocalData = buildCurrentSemesterSavePayload();
+      semesterLoadState = 'loading';
     }
 
     function saveCatalogToStorage() {
@@ -5605,14 +5749,16 @@
       if (isAdmin && currentActiveTab === 'catalog' && tabName !== 'catalog') closeForm();
       const leavingHistoricalRotation = currentActiveTab === 'rotation'
         && tabName !== 'rotation' && isHistoricalRotationSemester();
-      if (isAdmin && (tabName === 'selection' || leavingHistoricalRotation)) {
+      if (isAdmin && (tabName === 'home' || tabName === 'selection' || leavingHistoricalRotation)) {
         const latestSemester = getLatestSemester();
         if (latestSemester && currentSemester !== latestSemester.id) switchSemester(latestSemester.id);
       }
       currentActiveTab = tabName;
+      const homeTab = document.getElementById('tab-home');
       const catalogTab = document.getElementById('tab-catalog');
       const rotationTab = document.getElementById('tab-rotation');
       const selectionTab = document.getElementById('tab-selection');
+      const homeBtn = document.getElementById('tab-home-btn');
       const catalogBtn = document.getElementById('tab-catalog-btn');
       const rotationBtn = document.getElementById('tab-rotation-btn');
       const selectionBtn = document.getElementById('tab-selection-btn');
@@ -5626,6 +5772,7 @@
       const activeClass = "w-full px-5 py-3.5 rounded-xl font-bold text-left text-base lg:text-lg transition-all duration-200 bg-[#FFFDF6]/95 text-[#2F6057] shadow-sm flex items-center gap-3";
       const inactiveClass = "w-full px-5 py-3.5 rounded-xl font-medium text-left text-base lg:text-lg transition-all duration-200 text-[#4B7064] hover:text-[#2F6057] hover:bg-[#FFF8E8]/65 flex items-center gap-3";
 
+      homeTab.classList.add('hidden');
       catalogTab.classList.add('hidden');
       rotationTab.classList.add('hidden');
       selectionTab.classList.add('hidden');
@@ -5634,11 +5781,21 @@
         desktopSummary.innerHTML = '';
       }
 
+      homeBtn.className = inactiveClass;
       catalogBtn.className = inactiveClass;
       rotationBtn.className = inactiveClass;
       selectionBtn.className = inactiveClass;
 
-      if (tabName === 'catalog') {
+      if (tabName === 'home') {
+        homeTab.classList.remove('hidden');
+        homeBtn.className = activeClass;
+        pageTitle.innerText = '首頁';
+        actionContainer.classList.add('hidden');
+        if (semesterContainer) semesterContainer.classList.add('hidden');
+        if (gearBtn) gearBtn.classList.add('hidden');
+        if (catalogPrintBtn) catalogPrintBtn.classList.add('hidden');
+        renderCatalogSource();
+      } else if (tabName === 'catalog') {
         catalogTab.classList.remove('hidden');
         catalogBtn.className = activeClass;
 
