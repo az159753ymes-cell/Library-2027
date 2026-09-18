@@ -14,14 +14,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-  <link rel="preload" as="font" href="assets/the-peak-font-beta-v0-102.ttf" type="font/ttf" crossorigin>
+  <link rel="preload" as="font" href="assets/the-peak-confirmation-v1.woff2" type="font/woff2" crossorigin>
   <link rel="preload" as="image" href="assets/mobile-login-intro-combined-v1.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/auth-error-reminder-handlettered-v5.png" type="image/png" media="(max-width: 760px)" fetchpriority="high">
   <link rel="preload" as="image" href="assets/library-wordmark-eucalyptus-brush-v4-600.webp" type="image/webp" fetchpriority="high">
-  <link rel="preload" as="image" href="assets/wugao-library-banner-v5-1500.webp" type="image/webp" fetchpriority="high">
   <link rel="preload" as="image" href="assets/sidebar-student-presenting-transparent-v3-440.webp" type="image/webp" fetchpriority="high">
-  <link rel="preload" as="image" href="assets/admin-confirmation-corner-bottom-left-v1.png" type="image/png" fetchpriority="high">
-  <link rel="preload" as="image" href="assets/admin-confirmation-corner-top-right-v1.png" type="image/png" fetchpriority="high">
   <script>
     tailwind.config = {
       theme: {
@@ -59,7 +56,7 @@
   <style>
     @font-face {
       font-family: 'The Peak Beta';
-      src: url('assets/the-peak-font-beta-v0-102.ttf') format('truetype');
+      src: url('assets/the-peak-confirmation-v1.woff2') format('woff2');
       /* 確認頁不可為等待大型手寫字型而延後內容，亦不可在顯示後跳字。 */
       font-display: optional;
     }
@@ -2494,8 +2491,8 @@
       <!-- 管理員資料確認關卡：先確認本機與正式資料，再進入工作頁面。 -->
       <div id="tab-home" class="admin-confirmation-stage hidden">
         <div class="admin-confirmation-corner-art" aria-hidden="true">
-          <img class="admin-confirmation-corner-art__bottom-left" src="assets/admin-confirmation-corner-bottom-left-v1.png" alt="" decoding="async" />
-          <img class="admin-confirmation-corner-art__top-right" src="assets/admin-confirmation-corner-top-right-v1.png" alt="" decoding="async" />
+          <img class="admin-confirmation-corner-art__bottom-left" src="assets/admin-confirmation-corner-bottom-left-v1.png" alt="" decoding="async" loading="lazy" />
+          <img class="admin-confirmation-corner-art__top-right" src="assets/admin-confirmation-corner-top-right-v1.png" alt="" decoding="async" loading="lazy" />
         </div>
         <section class="admin-confirmation-card">
           <section id="catalog-source-panel" class="rounded-xl border border-[#D8CEBE] bg-[#FFFDF9] px-4 py-3 text-base leading-6 text-[#52796F]" role="status" aria-live="polite">
@@ -2528,7 +2525,7 @@
       <div id="tab-catalog" class="hidden">
 
         <section class="wugao-banner relative overflow-hidden rounded-2xl border mb-6 no-print" aria-label="五誥棧圖書館橫幅">
-          <img src="assets/wugao-library-banner-v5-1500.webp" alt="五誥棧圖書館藝術橫幅，長髮女學生在窗邊閱讀" class="w-full h-full object-cover" fetchpriority="high" />
+          <img src="assets/wugao-library-banner-v5-1500.webp" alt="五誥棧圖書館藝術橫幅，長髮女學生在窗邊閱讀" class="w-full h-full object-cover" loading="lazy" />
         </section>
 
         <!-- 「書箱清冊」雙欄版型 (左側 72% 寬廣表格, 右側 28% 適中表單) -->

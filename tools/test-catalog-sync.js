@@ -8,6 +8,8 @@ const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
 const appSource = scripts.at(-1)?.[1];
 assert.ok(appSource, 'app inline script must exist');
 new vm.Script(appSource, { filename: 'index.html' });
+assert.match(html, /the-peak-confirmation-v1\.woff2/, 'the confirmation page must preload its small font subset');
+assert.doesNotMatch(appSource, /document\.fonts\.ready/, 'the confirmation page must not wait for every document font');
 
 function createApp() {
   const items = new Map();
