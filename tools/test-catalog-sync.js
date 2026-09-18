@@ -269,6 +269,63 @@ async function run() {
   await success.run('saveCurrentSemesterToCloud()');
   assert.equal(success.run('hasUnsavedAdminChanges'), false);
   assert.equal(success.run('cloudSyncStatus'), 'saved');
+
+  const confirmationSave = createApp();
+  confirmationSave.run(`
+    currentActiveTab = 'home';
+    adminDataConfirmationComplete = false;
+    hasUnsavedAdminChanges = true;
+    cloudReady = true;
+    catalogLoadState = 'ready';
+    adminSettingsLoadState = 'ready';
+    semesterLoadState = 'ready';
+    teacherSelectionWindowLoaded = true;
+    teacherSelectionRecordsLoaded = true;
+    saveCurrentSemesterToCloud = async () => { hasUnsavedAdminChanges = false; };
+    renderAdminSavePopover = () => {};
+    enterAdminWorkspace = () => {
+      adminDataConfirmationComplete = true;
+      currentActiveTab = 'catalog';
+    };
+  `);
+  await confirmationSave.run('confirmAdminSave()');
+  assert.equal(confirmationSave.run('adminDataConfirmationComplete'), true, 'a successful confirmation-page save must complete the gate');
+  assert.equal(confirmationSave.run('currentActiveTab'), 'catalog', 'a successful confirmation-page save must enter the catalog');
+
+  const workspaceSave = createApp();
+  workspaceSave.run(`
+    currentActiveTab = 'catalog';
+    adminDataConfirmationComplete = true;
+    hasUnsavedAdminChanges = true;
+    cloudReady = true;
+    catalogLoadState = 'ready';
+    adminSettingsLoadState = 'ready';
+    semesterLoadState = 'ready';
+    teacherSelectionWindowLoaded = true;
+    teacherSelectionRecordsLoaded = true;
+    saveCurrentSemesterToCloud = async () => { hasUnsavedAdminChanges = false; };
+    renderAdminSavePopover = () => {};
+    enterAdminWorkspace = () => { throw new Error('workspace save must not navigate'); };
+  `);
+  await workspaceSave.run('confirmAdminSave()');
+  assert.equal(workspaceSave.run('currentActiveTab'), 'catalog', 'a workspace save must keep its current page');
+
+  const confirmationFailure = createApp();
+  confirmationFailure.run(`
+    currentActiveTab = 'home';
+    adminDataConfirmationComplete = false;
+    hasUnsavedAdminChanges = true;
+    cloudReady = true;
+    catalogLoadState = 'ready';
+    adminSettingsLoadState = 'ready';
+    saveCurrentSemesterToCloud = async () => { throw new Error('offline'); };
+    renderAdminSavePopover = () => {};
+    enterAdminWorkspace = () => { throw new Error('failed save must not navigate'); };
+  `);
+  await confirmationFailure.run('confirmAdminSave()');
+  assert.equal(confirmationFailure.run('currentActiveTab'), 'home', 'a failed confirmation-page save must remain on the confirmation page');
+  assert.equal(confirmationFailure.run('hasUnsavedAdminChanges'), true, 'a failed confirmation-page save must retain unsaved changes');
+
   const noSettings = configuredSave(teacherDocs);
   noSettings.run('adminSettingsLoadState = "missing";');
   await assert.rejects(noSettings.run('saveCurrentSemesterToCloud()'), /學期設定/);

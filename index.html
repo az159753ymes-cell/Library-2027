@@ -4165,6 +4165,8 @@
       ].filter(Boolean);
       if (saveTriggers.some(button => button.disabled) || pendingCloudSemesterSaves > 0) return;
       saveTriggers.forEach(button => { button.disabled = true; });
+      // 僅記住從確認關卡啟動的儲存；工作頁的 LOGO 儲存不應改變目前頁面。
+      const shouldEnterWorkspaceAfterSave = !adminDataConfirmationComplete && currentActiveTab === 'home';
       let saveError = null;
       try {
         const importedTeacherSelections = await maybeAutoImportTeacherSelections();
@@ -4172,6 +4174,8 @@
           buildCurrentSemesterSavePayload(),
           importedTeacherSelections ? teacherSelectionWindow : null
         );
+        // saveCurrentSemesterToCloud 已完成正式清冊回讀與教師端同步驗證。
+        if (shouldEnterWorkspaceAfterSave && isAdminDataConfirmationReady()) enterAdminWorkspace();
       } catch (error) {
         console.error('手動同步資料失敗：', error);
         saveError = error;
