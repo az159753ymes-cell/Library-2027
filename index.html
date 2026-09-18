@@ -60,7 +60,8 @@
     @font-face {
       font-family: 'The Peak Beta';
       src: url('assets/the-peak-font-beta-v0-102.ttf') format('truetype');
-      font-display: block;
+      /* 確認頁不可為等待大型手寫字型而延後內容，亦不可在顯示後跳字。 */
+      font-display: optional;
     }
 
     :root {
@@ -4572,33 +4573,23 @@
     }
 
     function isAdminConfirmationContentReady() {
-      return isAdminConfirmationDataSettled()
-        && (adminConfirmationFontLoaded || Boolean(adminConfirmationFontLoadError));
+      // 正式資料完成即可顯示；字型只在背景載入，不能阻擋確認頁。
+      return isAdminConfirmationDataSettled();
     }
 
     async function prepareAdminConfirmationFont(userId) {
       adminConfirmationFontLoaded = !(document.fonts && typeof document.fonts.load === 'function');
       adminConfirmationFontLoadError = '';
       if (adminConfirmationFontLoaded) return;
-      let fontTimeout = null;
       try {
-        const timeout = new Promise((_, reject) => {
-          fontTimeout = setTimeout(() => reject(new Error('確認頁字型載入逾時')), 8000);
-        });
-        await Promise.race([
-          Promise.all([document.fonts.load('700 21px "The Peak Beta"'), document.fonts.ready]),
-          timeout
-        ]);
+        // 只等待指定字型，勿等待所有網頁字型；畫面不會依賴此 Promise 才顯示。
+        await document.fonts.load('700 21px "The Peak Beta"');
         if (activeAuthUid !== userId || !isAdmin) return;
         adminConfirmationFontLoaded = true;
       } catch (error) {
         if (activeAuthUid !== userId || !isAdmin) return;
-        adminConfirmationFontLoadError = '確認頁字型未能載入。請確認網路後重新整理；系統不會顯示暫態舊資料。';
-        console.error('確認頁字型載入失敗：', error);
-      } finally {
-        if (fontTimeout) clearTimeout(fontTimeout);
-        renderCatalogSource();
-        syncRoleUi();
+        // font-display: optional 會保留已顯示的備用字型，避免網路較慢時晚到跳字。
+        console.warn('確認頁字型未載入，保留備用字型：', error);
       }
     }
 
@@ -5209,8 +5200,7 @@
 
       isAdmin = isAdministratorUser(user);
       if (isAdmin) prepareAdminConfirmationFont(user.uid);
-      // 不讓首頁在圖片仍分區解碼時露出；下載或解碼失敗仍會繼續進入系統。
-      await homeIllustrationsReady;
+      // 裝飾圖片在背景解碼；不得延後登入後的正式資料確認。
       document.getElementById('auth-gate').classList.add('hidden');
       document.getElementById('app-sidebar').classList.remove('hidden');
       document.getElementById('app-main').classList.remove('hidden');

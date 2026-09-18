@@ -81,9 +81,7 @@ async function run() {
   const fontPending = createApp();
   fontPending.sandbox.old = old;
   fontPending.run('booksData = old; catalogLocalBooks = old; catalogServerBooks = old; catalogLoadState = "ready"; adminSettingsLoadState = "ready"; semesterLoadState = "ready"; teacherSelectionWindowLoaded = true; teacherSelectionWindowLoadError = ""; teacherSelectionRecordsLoaded = true; teacherSelectionRecordsLoadError = ""; currentActiveTab = "home"; adminConfirmationFontLoaded = false; renderCatalogSource();');
-  assert.equal(fontPending.elements.get('catalog-source-status').textContent, '', 'the confirmation page must stay blank while its font is loading');
-  fontPending.run('adminConfirmationFontLoaded = true; renderCatalogSource();');
-  assert.equal(fontPending.elements.get('catalog-source-status').textContent, '① 已從 Firestore 伺服器讀取正式清冊。');
+  assert.equal(fontPending.elements.get('catalog-source-status').textContent, '① 已從 Firestore 伺服器讀取正式清冊。', 'the confirmation page must not wait for the decorative font');
 
   const lastBoxOnly = createApp();
   lastBoxOnly.sandbox.multiBoxCatalog = [
