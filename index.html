@@ -7756,14 +7756,17 @@
         const timeText = (slotKey === 'p3') ? '【中午12:35】' : '【晨讀時間】';
         handoverText = `請於 ${targetDate}${timeText} 移交給【${to}】`;
 
-        // 第二、第三批若沒有班級直接移交，圖資股長須在交換日親至圖書館搬書。
-        // 只依實際來源判斷，避免把班際接力的班級也標成到館搬書。
-        if ((slotKey === 'p2' || slotKey === 'p3') && rawFrom === '圖書館') {
+      }
+
+      // 若下一次交換的書箱沒有班級直接移交，提醒必須放在「本批」任務卡，
+      // 讓圖資股長在交換日晨讀時間前往圖書館搬下一批書箱。
+      const nextSlotKey = slotKey === 'p1' ? 'p2' : (slotKey === 'p2' ? 'p3' : '');
+      const nextSchedSlot = nextSlotKey ? rotationSchedule[className]?.[nextSlotKey] : null;
+      if (nextSchedSlot?.fromPlace === '圖書館') {
           const pickupDate = formatDateShort(
-            slotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
+            nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
           ) || String(receiveDate || '').replace(/（.*$/, '');
           handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
-        }
       }
 
       return `
