@@ -7542,12 +7542,16 @@
       const toPlace = rawTo.replace(/班$/g, '');
       const dueDate = slotInfo.dueDate || "未定";
 
-      // 列印輸出專屬：四行標準結構
-      return `<div class="flex flex-col justify-center items-center text-center space-y-0.5 py-1 leading-snug">
+      // 列印輸出專屬：四行標準結構；教師選書與管理端手動指定皆在右下角標示星號。
+      const teacherSelectionMark = (slotInfo.selectionSource === 'teacher' || slotInfo.manualSpecified === true)
+        ? '<span class="absolute bottom-0.5 right-0.5 text-sm leading-none text-gray-900" aria-label="教師指定書籍" title="教師指定書籍">★</span>'
+        : '';
+      return `<div class="relative flex flex-col justify-center items-center text-center space-y-0.5 py-1 leading-snug">
         <div class="text-xs text-gray-700">來自【${fromPlace}】的</div>
         <div class="font-bold text-sm text-gray-900">《${title}》</div>
         <div class="text-xs text-gray-600">請於【${dueDate}】移交到</div>
         <div class="font-bold text-xs text-gray-900">【${toPlace}】</div>
+        ${teacherSelectionMark}
       </div>`;
     }
 
