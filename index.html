@@ -7767,11 +7767,17 @@
       const routeIndex = priorSlotKey ? buildGlobalBookRouteIndex() : null;
       const comesFromLibrary = Boolean(nextBookCode)
         && !routeIndex[priorSlotKey].has(nextBookCode);
+      const nextBookSourceClass = nextBookCode && priorSlotKey
+        ? routeIndex[priorSlotKey].get(nextBookCode)
+        : '';
       if (comesFromLibrary) {
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
         handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
+      } else if (isG7P1Activity && nextBookSourceClass) {
+        const pickupDate = formatDateShort(rotationDates.exchange1Date) || String(receiveDate || '').replace(/（.*$/, '');
+        handoverText = `請於 ${pickupDate}【晨讀時間】依排程找【${nextBookSourceClass}】領書`;
       }
 
       return `
