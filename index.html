@@ -7762,11 +7762,16 @@
       // 讓圖資股長在交換日晨讀時間前往圖書館搬下一批書箱。
       const nextSlotKey = slotKey === 'p1' ? 'p2' : (slotKey === 'p2' ? 'p3' : '');
       const nextSchedSlot = nextSlotKey ? rotationSchedule[className]?.[nextSlotKey] : null;
-      if (nextSchedSlot?.fromPlace === '圖書館') {
-          const pickupDate = formatDateShort(
-            nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
-          ) || String(receiveDate || '').replace(/（.*$/, '');
-          handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
+      const priorSlotKey = nextSlotKey === 'p2' ? 'p1' : (nextSlotKey === 'p3' ? 'p2' : '');
+      const nextBookCode = nextSchedSlot?.code ? String(nextSchedSlot.code).trim() : '';
+      const routeIndex = priorSlotKey ? buildGlobalBookRouteIndex() : null;
+      const comesFromLibrary = Boolean(nextBookCode)
+        && !routeIndex[priorSlotKey].has(nextBookCode);
+      if (comesFromLibrary) {
+        const pickupDate = formatDateShort(
+          nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
+        ) || String(receiveDate || '').replace(/（.*$/, '');
+        handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
       }
 
       return `
