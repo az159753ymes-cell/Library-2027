@@ -7755,6 +7755,15 @@
 
         const timeText = (slotKey === 'p3') ? '【中午12:35】' : '【晨讀時間】';
         handoverText = `請於 ${targetDate}${timeText} 移交給【${to}】`;
+
+        // 第二、第三批若沒有班級直接移交，圖資股長須在交換日親至圖書館搬書。
+        // 只依實際來源判斷，避免把班際接力的班級也標成到館搬書。
+        if ((slotKey === 'p2' || slotKey === 'p3') && rawFrom === '圖書館') {
+          const pickupDate = formatDateShort(
+            slotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
+          ) || String(receiveDate || '').replace(/（.*$/, '');
+          handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
+        }
       }
 
       return `
