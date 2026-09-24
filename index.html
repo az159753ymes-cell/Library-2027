@@ -7542,8 +7542,15 @@
       const toPlace = rawTo.replace(/班$/g, '');
       const dueDate = slotInfo.dueDate || "未定";
 
-      // 列印輸出專屬：四行標準結構；教師選書與管理端手動指定皆在右下角標示星號。
-      const teacherSelectionMark = (slotInfo.selectionSource === 'teacher' || slotInfo.manualSpecified === true || slotInfo.isSpecified === true)
+      // 教師選書在截止前仍獨立儲存在 selections，列印時直接比對，無須等待匯入輪換表。
+      const isCurrentTeacherSelection = Object.values(selectionRecords).some(selection =>
+        String(selection?.classCode || '') === String(className)
+        && String(selection?.periodKey || '') === String(slotKey)
+        && String(selection?.bookCode || '').trim() === String(slotInfo.code).trim()
+      );
+
+      // 列印輸出專屬：各種教師指定來源皆在右下角標示星號。
+      const teacherSelectionMark = (isCurrentTeacherSelection || slotInfo.selectionSource === 'teacher' || slotInfo.manualSpecified === true || slotInfo.isSpecified === true)
         ? '<span class="absolute bottom-0.5 right-0.5 text-sm leading-none text-gray-900" aria-label="教師指定書籍" title="教師指定書籍">★</span>'
         : '';
       return `<div class="relative flex flex-col justify-center items-center text-center space-y-0.5 py-1 leading-snug">
