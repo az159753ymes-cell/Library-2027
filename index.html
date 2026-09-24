@@ -7770,14 +7770,15 @@
       const nextBookSourceClass = nextBookCode && priorSlotKey
         ? routeIndex[priorSlotKey].get(nextBookCode)
         : '';
+      const nextBookSource = String(nextSchedSlot?.fromPlace || nextBookSourceClass || '').replace(/班$/g, '');
       if (comesFromLibrary) {
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
         handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
-      } else if (isG7P1Activity && nextBookSourceClass) {
+      } else if (isG7P1Activity && nextBookSource && nextBookSource !== '圖書館') {
         const pickupDate = formatDateShort(rotationDates.exchange1Date) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverText = `請於 ${pickupDate}【晨讀時間】依排程找【${nextBookSourceClass}】領書`;
+        handoverText = `請於 ${pickupDate}【晨讀時間】依排程找【${nextBookSource}】領書`;
       }
 
       return `
