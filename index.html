@@ -7758,8 +7758,8 @@
           const isReturningToLibrary = to === '圖書館';
           handoverActions.push(
             isReturningToLibrary
-              ? `歸還：請於 ${targetDate}${timeText} 交還到【圖書館】`
-              : `移交：請於 ${targetDate}${timeText} 移交給【${to}】`
+              ? `請於 ${targetDate}${timeText} 交還到【圖書館】`
+              : `請於 ${targetDate}${timeText} 移交給【${to}】`
           );
         }
 
@@ -7782,12 +7782,12 @@
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverActions.push(`領書：請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`);
+        handoverActions.push(`請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`);
       } else if (nextBookSource && nextBookSource !== '圖書館') {
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverActions.push(`領書：請於 ${pickupDate}【晨讀時間】依排程找【${nextBookSource}】領書`);
+        handoverActions.push(`請於 ${pickupDate}【晨讀時間】依排程表找【${nextBookSource}】領書`);
       }
 
       return `
