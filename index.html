@@ -7719,18 +7719,18 @@
       const isG7P1Activity = isG7P1 && (!schedSlot || !schedSlot.code);
       const showTeacherCheckDate = slotKey !== 'p3';
 
-      let title = '', from = '圖書館', to = '圖書館', qtyText = '', leaderText = leaderDate, teacherText = `${teacherDate} 12:30-13:00`, handoverText = '', flameText = '圖資股長請將領書紀錄表放置於書箱內，書箱放在教室前門（不要擋住出入口）';
+      let title = '', from = '圖書館', to = '圖書館', qtyText = '', leaderText = leaderDate, teacherText = `${teacherDate} 12:30-13:00`, flameText = '圖資股長請將領書紀錄表放置於書箱內，書箱放在教室前門（不要擋住出入口）';
+      const handoverActions = [];
       let heartText = `圖資股長請於${noticeDate || 'xx/x（五）'}在聯絡簿寫上帶班書，提醒同學並準時收書`;
 
       if (isG7P1Activity) {
         title = '參觀圖書館＆新生齊步走';
         from = '圖書館';
         to = '圖書館';
-        qtyText = '無（本時段為圖書館參觀活動）';
+        qtyText = '0';
         leaderText = '無';
         teacherText = '無';
         heartText = '無（本時段為圖書館參觀活動）';
-        handoverText = `請於 ${targetDate}【晨讀時間】 依排程領取第二批書箱`;
       } else {
         const hasAssignedBook = !!(schedSlot && schedSlot.code && String(schedSlot.code).trim() !== '');
         const book = hasAssignedBook ? getBookByCode(schedSlot.code) : null;
@@ -7742,24 +7742,31 @@
         to = rawTo.replace(/班$/g, '');
 
         if (!hasAssignedBook) {
-          qtyText = '0本';
+          qtyText = '0';
         } else if (book) {
           const missingDisp = formatMissingDisplay(book.missing);
           const totalNum = (book.total !== undefined && book.total !== null && String(book.total).trim() !== '')
             ? String(book.total).replace(/本$/g, '').trim()
             : (book.maxNum ? String(book.maxNum).replace(/本$/g, '').trim() : '0');
-          qtyText = missingDisp ? `${missingDisp}缺號，共${totalNum}本` : `${totalNum}本`;
+          qtyText = totalNum;
         } else {
-          qtyText = '0本';
+          qtyText = '0';
         }
 
-        const timeText = (slotKey === 'p3') ? '【中午12:35】' : '【晨讀時間】';
-        handoverText = `請於 ${targetDate}${timeText} 移交給【${to}】`;
+        if (hasAssignedBook) {
+          const timeText = (slotKey === 'p3') ? '【中午12:35】' : '【晨讀時間】';
+          const isReturningToLibrary = to === '圖書館';
+          handoverActions.push(
+            isReturningToLibrary
+              ? `歸還：請於 ${targetDate}${timeText} 交還到【圖書館】`
+              : `移交：請於 ${targetDate}${timeText} 移交給【${to}】`
+          );
+        }
 
       }
 
-      // 若下一次交換的書箱沒有班級直接移交，提醒必須放在「本批」任務卡，
-      // 讓圖資股長在交換日晨讀時間前往圖書館搬下一批書箱。
+      // 下一批書箱的領取動作顯示在「本批」任務卡；無論由圖書館或其他班級交接，
+      // 都不覆蓋本批的移交／歸還提醒。
       const nextSlotKey = slotKey === 'p1' ? 'p2' : (slotKey === 'p2' ? 'p3' : '');
       const nextSchedSlot = nextSlotKey ? rotationSchedule[className]?.[nextSlotKey] : null;
       const priorSlotKey = nextSlotKey === 'p2' ? 'p1' : (nextSlotKey === 'p3' ? 'p2' : '');
@@ -7775,10 +7782,12 @@
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverText = `請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`;
-      } else if (isG7P1Activity && nextBookSource && nextBookSource !== '圖書館') {
-        const pickupDate = formatDateShort(rotationDates.exchange1Date) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverText = `請於 ${pickupDate}【晨讀時間】依排程找【${nextBookSource}】領書`;
+        handoverActions.push(`領書：請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`);
+      } else if (nextBookSource && nextBookSource !== '圖書館') {
+        const pickupDate = formatDateShort(
+          nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
+        ) || String(receiveDate || '').replace(/（.*$/, '');
+        handoverActions.push(`領書：請於 ${pickupDate}【晨讀時間】依排程找【${nextBookSource}】領書`);
       }
 
       return `
@@ -7791,8 +7800,7 @@
 
           <!-- 內容明細 (各欄位拉開留白空間) -->
           <div class="text-sm text-gray-900 space-y-2">
-            <div><span class="font-bold">書從哪裡來：</span>${from}</div>
-            <div><span class="font-bold">書箱有幾本：</span>${qtyText}</div>
+            <div><span class="font-bold">書從哪裡來：</span>${from}（書箱內共有${qtyText}本）</div>
             
             <!-- 愛心提醒欄 (粉紅飽滿底色框框卡片，下方加大留白距離) -->
             <div class="flex items-center gap-1.5 font-bold text-[#881337] text-xs sm:text-sm rounded-lg px-3 py-1.5 mb-2.5 mt-1.5"
@@ -7816,10 +7824,12 @@
               <span>${flameText}</span>
             </div>
 
-            <!-- 兩倍放大移交提醒 (靠最右邊對齊) -->
-            <div class="text-base lg:text-lg font-black text-[#2C5E43] pt-0.5 tracking-wide text-right w-full">
-              ${handoverText}
-            </div>
+            <!-- 行動提醒：交書與領取下一批書可同時顯示，避免交換日漏做任一項。 -->
+            ${handoverActions.length ? `
+              <div class="text-base lg:text-lg font-black text-[#2C5E43] pt-0.5 tracking-wide text-right w-full space-y-1">
+                ${handoverActions.map(action => `<div>${action}</div>`).join('')}
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
