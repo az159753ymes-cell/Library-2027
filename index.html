@@ -7756,11 +7756,11 @@
         if (hasAssignedBook) {
           const timeText = (slotKey === 'p3') ? '【中午12:35】' : '【晨讀時間】';
           const isReturningToLibrary = to === '圖書館';
-          handoverActions.push(
-            isReturningToLibrary
-              ? `請於 ${targetDate}${timeText} 交還到【圖書館】`
-              : `請於 ${targetDate}${timeText} 移交給【${to}】`
-          );
+          handoverActions.push({
+            date: targetDate,
+            time: timeText,
+            text: isReturningToLibrary ? '交還到【圖書館】' : `移交給【${to}】`
+          });
         }
 
       }
@@ -7782,13 +7782,28 @@
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverActions.push(`請於 ${pickupDate}【晨讀時間】7:45到【圖書館】搬書`);
+        handoverActions.push({
+          date: pickupDate,
+          time: '【晨讀時間】',
+          text: '7:45到【圖書館】搬書',
+          combinedText: '到【圖書館】搬書'
+        });
       } else if (nextBookSource && nextBookSource !== '圖書館') {
         const pickupDate = formatDateShort(
           nextSlotKey === 'p2' ? rotationDates.exchange1Date : rotationDates.exchange2Date
         ) || String(receiveDate || '').replace(/（.*$/, '');
-        handoverActions.push(`請於 ${pickupDate}【晨讀時間】依排程表找【${nextBookSource}】領書`);
+        handoverActions.push({
+          date: pickupDate,
+          time: '【晨讀時間】',
+          text: `依排程表找【${nextBookSource}】領書`,
+          combinedText: `找【${nextBookSource}】領書`
+        });
       }
+
+      const renderedHandoverActions = handoverActions.length === 2
+        && handoverActions[0].date === handoverActions[1].date
+        ? [`請於 ${handoverActions[0].date}【７：４５晨讀】${handoverActions[0].text}＆ ${handoverActions[1].combinedText || handoverActions[1].text}`]
+        : handoverActions.map(action => `請於 ${action.date}${action.time}${action.text}`);
 
       return `
         <div class="border-2 border-gray-800 rounded-xl p-3.5 bg-gray-50/20">
@@ -7799,7 +7814,7 @@
           </div>
 
           <!-- 內容明細 (各欄位拉開留白空間) -->
-          <div class="text-sm text-gray-900 space-y-2">
+          <div class="text-sm text-gray-900 space-y-3">
             <div><span class="font-bold">書從哪裡來：</span>${from}（書箱內共有${qtyText}本）</div>
             
             <!-- 愛心提醒欄 (粉紅飽滿底色框框卡片，下方加大留白距離) -->
@@ -7825,9 +7840,9 @@
             </div>
 
             <!-- 行動提醒：交書與領取下一批書可同時顯示，避免交換日漏做任一項。 -->
-            ${handoverActions.length ? `
+            ${renderedHandoverActions.length ? `
               <div class="text-base lg:text-lg font-black text-[#2C5E43] pt-0.5 tracking-wide text-right w-full space-y-1">
-                ${handoverActions.map(action => `<div>${action}</div>`).join('')}
+                ${renderedHandoverActions.map(action => `<div>${action}</div>`).join('')}
               </div>
             ` : ''}
           </div>
