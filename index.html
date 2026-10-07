@@ -7802,15 +7802,16 @@
 
       const renderedHandoverActions = handoverActions.length === 2
         && handoverActions[0].date === handoverActions[1].date
-        ? [`請於 ${handoverActions[0].date}【７：４５晨讀】${handoverActions[0].text}＆ ${handoverActions[1].combinedText || handoverActions[1].text}`]
+        ? [`請於 ${handoverActions[0].date}【7:45晨讀】${handoverActions[0].text}＆ ${handoverActions[1].combinedText || handoverActions[1].text}`]
         : handoverActions.map(action => `請於 ${action.date}${action.time}${action.text}`);
 
       return `
         <div class="border-2 border-gray-800 rounded-xl p-3.5 bg-gray-50/20">
           <!-- 卡片標頭 (刪除圖示，簡潔呈現領書時間) -->
-          <div class="text-lg font-black text-gray-900 border-b border-gray-400 pb-1.5 mb-2 flex justify-between items-center">
-            <span>${title}</span>
-            <span class="text-sm font-bold text-gray-800">領書時間：${receiveDate}</span>
+          <div class="text-xl font-black text-[#1F4D37] rounded-lg px-3 py-2.5 mb-5 flex justify-between items-center gap-3"
+            style="background-color: #EAF3EC !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <span class="flex-1">${title}</span>
+            <span class="text-sm font-bold text-[#2C3E35] flex-shrink-0">領書時間：${receiveDate}</span>
           </div>
 
           <!-- 內容明細 (各欄位拉開留白空間) -->
